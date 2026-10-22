@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Employees - PAWPATROL Management System</title>
+
+    <link rel="stylesheet" href="style.css">
+    <script defer src="local-auth.js"></script>
+</head>
+
+<body data-requires-login style="visibility: hidden;">
+
+    <header>
+
+        <div class="logo">
+            <div class="logo-circle">🐶</div>
+            <div class="logo-text">
+                <h1>PAWPATROL</h1>
+                <span>MANAGEMENT SYSTEM</span>
+            </div>
+        </div>
+
+        <div class="admin">
+            <strong id="currentUserEmail">Employee</strong>
+            <small>Signed in</small>
+        </div>
+
+    </header>
+
+    <div class="layout">
+
+        <aside>
+            <a href="index.html">🏠 Dashboard</a>
+            <a href="pets.html">🐾 Pets</a>
+            <a href="products.html">📦 Products</a>
+            <a href="customers.html">👥 Customers</a>
+            <a href="sales.html">💰 Sales</a>
+            <a href="inventory.html">📊 Inventory</a>
+            <a href="employees.html" class="active">👨‍💼 Employees</a>
+            <a href="reports.html">📈 Reports</a>
+            <a href="settings.html">⚙️ Settings</a>
+            <button id="logoutButton" class="logout-button logout" type="button">↪ Sign out</button>
+        </aside>
+
+        <main>
+
+            <div class="page-header">
+                <div>
+                    <h2>EMPLOYEE MANAGEMENT</h2>
+                    <p>Manage your pet shop team and their contact details.</p>
+                </div>
+
+                <button class="add-button" id="addEmployeeButton" type="button">
+                    + Add Employee
+                </button>
+            </div>
+
+            <div class="search-box">
+                <input
+                    id="searchEmployeeInput"
+                    type="search"
+                    placeholder="Search employees..."
+                    aria-label="Search employees"
+                >
+                <button id="searchEmployeeButton" type="button">Search</button>
+            </div>
+
+            <section class="management-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Employee Name</th>
+                            <th>Role</th>
+                            <th>Phone</th>
+                            <th>Email</th>
+                            <th>Hire Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="employeeTableBody"></tbody>
+                </table>
+            </section>
+
+        </main>
+
+    </div>
+
+    <div id="employeeModal" class="modal" aria-hidden="true">
+        <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+            <div class="modal-header">
+                <h2 id="modalTitle">Add New Employee</h2>
+                <button class="close-button" id="closeEmployeeModal" type="button" aria-label="Close">
+                    ×
+                </button>
+            </div>
+
+            <form id="employeeForm">
+                <input type="hidden" id="employeeId">
+
+                <label for="employeeName">Employee Name</label>
+                <input
+                    type="text"
+                    id="employeeName"
+                    placeholder="Enter employee name"
+                    maxlength="80"
+                    autocomplete="name"
+                    required
+                >
+
+                <label for="employeeRole">Role</label>
+                <select id="employeeRole" required>
+                    <option value="">Select role</option>
+                    <option value="Manager">Manager</option>
+                    <option value="Sales Associate">Sales Associate</option>
+                    <option value="Cashier">Cashier</option>
+                    <option value="Pet Care Assistant">Pet Care Assistant</option>
+                    <option value="Inventory Clerk">Inventory Clerk</option>
+                    <option value="Groomer">Groomer</option>
+                    <option value="Other">Other</option>
+                </select>
+
+                <label for="employeePhone">Phone</label>
+                <input
+                    type="tel"
+                    id="employeePhone"
+                    placeholder="Enter phone number"
+                    maxlength="30"
+                    autocomplete="tel"
+                    required
+                >
+
+                <label for="employeeEmail">Email</label>
+                <input
+                    type="email"
+                    id="employeeEmail"
+                    placeholder="Enter email address"
+                    maxlength="120"
+                    autocomplete="email"
+                    required
+                >
+
+                <label for="employeeHireDate">Hire Date</label>
+                <input type="date" id="employeeHireDate" required>
+
+                <div class="form-buttons">
+                    <button class="cancel-button" id="cancelEmployeeForm" type="button">
+                        Cancel
+                    </button>
+                    <button class="save-button" id="submitEmployeeButton" type="submit">
+                        Add Employee
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const STORAGE_KEY = "petShopEmployees";
+
+        const defaultEmployees = [
+            {
+                id: "EMP-001",
+                name: "Alex Morgan",
+                role: "Manager",
+                phone: "0911-234-5678",
+                email: "alex@example.com",
+                hireDate: "2023-01-15"
+            },
+            {
+                id: "EMP-002",
+                name: "Jamie Rivera",
+                role: "Sales Associate",
+                phone: "0918-345-6789",
+                email: "jamie@example.com",
+                hireDate: "2023-06-01"
+            },
+            {
+                id: "EMP-003",
+                name: "Taylor Cruz",
+                role: "Pet Care Assistant",
+                phone: "0921-456-7890",
+                email: "taylor@example.com",
+                hireDate: "2024-02-12"
+            }
+        ];
+
+        const storedEmployees = localStorage.getItem(STORAGE_KEY);
+        let employees = storedEmployees === null
+            ? defaultEmployees
+            : JSON.parse(storedEmployees);
+
+        if (!Array.isArray(employees)) {
+            throw new Error(`The saved employee data in "${STORAGE_KEY}" is not a valid list.`);
+        }
+
+        const employeeTableBody = document.getElementById("employeeTableBody");
+        const employeeForm = document.getElementById("employeeForm");
+        const employeeModal = document.getElementById("employeeModal");
+        const searchEmployeeInput = document.getElementById("searchEmployeeInput");
+
+        function saveEmployees() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(employees));
+        }
+
+        function appendCell(row, text) {
+            const cell = document.createElement("td");
+            cell.textContent = text;
+            row.appendChild(cell);
+            return cell;
+        }
+
+        function renderEmployees(searchText = "") {
+            const keyword = searchText.trim().toLowerCase();
+            const filteredEmployees = employees.filter((employee) => {
+                return [
+                    employee.id,
+                    employee.name,
+                    employee.role,
+                    employee.phone,
+                    employee.email,
+                    employee.hireDate
+                ].some((value) => String(value).toLowerCase().includes(keyword));
+            });
+
+            employeeTableBody.replaceChildren();
+
+            if (filteredEmployees.length === 0) {
+                const row = document.createElement("tr");
+                const cell = appendCell(
+                    row,
+                    employees.length === 0 ? "No employees have been added yet." : "No employees found."
+                );
+                cell.colSpan = 7;
+                cell.style.textAlign = "center";
+                cell.style.padding = "20px";
+                cell.style.color = "#777";
+                employeeTableBody.appendChild(row);
+                return;
+            }
+
+            filteredEmployees.forEach((employee) => {
+                const row = document.createElement("tr");
+                row.dataset.employeeId = employee.id;
+
+                appendCell(row, employee.id);
+                appendCell(row, employee.name);
+                appendCell(row, employee.role);
+                appendCell(row, employee.phone);
+                appendCell(row, employee.email);
+                appendCell(row, employee.hireDate);
+
+                const actionsCell = document.createElement("td");
+                const editButton = document.createElement("button");
+                editButton.type = "button";
+                editButton.className = "edit-button";
+                editButton.textContent = "Edit";
+
+                const deleteButton = document.createElement("button");
+                deleteButton.type = "button";
+                deleteButton.className = "delete-button";
+                deleteButton.textContent = "Delete";
+
+                actionsCell.append(editButton, deleteButton);
+                row.appendChild(actionsCell);
+                employeeTableBody.appendChild(row);
+            });
+        }
+
+        function openEmployeeForm(employee = null) {
+            employeeForm.reset();
+            document.getElementById("employeeId").value = employee ? employee.id : "";
+            document.getElementById("modalTitle").textContent = employee
+                ? "Edit Employee"
+                : "Add New Employee";
+            document.getElementById("submitEmployeeButton").textContent = employee
+                ? "Update Employee"
+                : "Add Employee";
+
+            if (employee) {
+                document.getElementById("employeeName").value = employee.name;
+                document.getElementById("employeeRole").value = employee.role;
+                document.getElementById("employeePhone").value = employee.phone;
+                document.getElementById("employeeEmail").value = employee.email;
+                document.getElementById("employeeHireDate").value = employee.hireDate;
+            }
+
+            employeeModal.style.display = "flex";
+            employeeModal.setAttribute("aria-hidden", "false");
+            document.getElementById("employeeName").focus();
+        }
+
+        function closeEmployeeForm() {
+            employeeForm.reset();
+            document.getElementById("employeeId").value = "";
+            employeeModal.style.display = "none";
+            employeeModal.setAttribute("aria-hidden", "true");
+        }
+
+        function createEmployeeId() {
+            const highestId = employees.reduce((highest, employee) => {
+                const match = /^EMP-(\d+)$/.exec(employee.id);
+                return match ? Math.max(highest, Number(match[1])) : highest;
+            }, 0);
+
+            return `EMP-${String(highestId + 1).padStart(3, "0")}`;
+        }
+
+        document.getElementById("addEmployeeButton").addEventListener("click", () => {
+            openEmployeeForm();
+        });
+
+        document.getElementById("closeEmployeeModal").addEventListener("click", closeEmployeeForm);
+        document.getElementById("cancelEmployeeForm").addEventListener("click", closeEmployeeForm);
+
+        employeeModal.addEventListener("click", (event) => {
+            if (event.target === employeeModal) {
+                closeEmployeeForm();
+            }
+        });
+
+        document.addEventListener("keydown", (event) => {
+            if (event.key === "Escape" && employeeModal.style.display === "flex") {
+                closeEmployeeForm();
+            }
+        });
+
+        employeeForm.addEventListener("submit", (event) => {
+            event.preventDefault();
+
+            const employeeId = document.getElementById("employeeId").value;
+            const employeeData = {
+                id: employeeId || createEmployeeId(),
+                name: document.getElementById("employeeName").value.trim(),
+                role: document.getElementById("employeeRole").value,
+                phone: document.getElementById("employeePhone").value.trim(),
+                email: document.getElementById("employeeEmail").value.trim(),
+                hireDate: document.getElementById("employeeHireDate").value
+            };
+
+            if (
+                !employeeData.name ||
+                !employeeData.role ||
+                !employeeData.phone ||
+                !employeeData.email ||
+                !employeeData.hireDate
+            ) {
+                alert("Please complete all employee fields.");
+                return;
+            }
+
+            if (employeeId) {
+                const employeeIndex = employees.findIndex((employee) => employee.id === employeeId);
+                if (employeeIndex === -1) {
+                    alert("This employee could not be found. Refresh the page and try again.");
+                    return;
+                }
+                employees[employeeIndex] = employeeData;
+            } else {
+                employees.push(employeeData);
+            }
+
+            saveEmployees();
+            renderEmployees(searchEmployeeInput.value);
+            closeEmployeeForm();
+        });
+
+        employeeTableBody.addEventListener("click", (event) => {
+            const button = event.target.closest("button");
+            const row = button && button.closest("tr");
+
+            if (!button || !row || !row.dataset.employeeId) {
+                return;
+            }
+
+            const employee = employees.find((item) => item.id === row.dataset.employeeId);
+            if (!employee) {
+                return;
+            }
+
+            if (button.classList.contains("edit-button")) {
+                openEmployeeForm(employee);
+                return;
+            }
+
+            if (button.classList.contains("delete-button") && confirm(`Delete ${employee.name}?`)) {
+                employees = employees.filter((item) => item.id !== employee.id);
+                saveEmployees();
+                renderEmployees(searchEmployeeInput.value);
+            }
+        });
+
+        document.getElementById("searchEmployeeButton").addEventListener("click", () => {
+            renderEmployees(searchEmployeeInput.value);
+        });
+
+        searchEmployeeInput.addEventListener("input", () => {
+            renderEmployees(searchEmployeeInput.value);
+        });
+
+        renderEmployees();
+    </script>
+
+</body>
+
+</html>

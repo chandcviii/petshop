@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Pets - PAWPATROL Management System</title>
+
+    <link rel="stylesheet" href="style.css">
+    <script defer src="local-auth.js"></script>
+</head>
+
+<body data-requires-login style="visibility: hidden;">
+
+    <!-- HEADER -->
+
+    <header>
+
+        <div class="logo">
+
+            <div class="logo-circle">
+                🐶
+            </div>
+
+            <div class="logo-text">
+                <h1>PAWPATROL</h1>
+                <span>MANAGEMENT SYSTEM</span>
+            </div>
+
+        </div>
+
+        <div class="admin">
+            <strong id="currentUserEmail">Employee</strong>
+            <small>Signed in</small>
+        </div>
+
+    </header>
+
+
+    <!-- LAYOUT -->
+
+    <div class="layout">
+
+
+        <!-- SIDEBAR -->
+
+        <aside>
+
+            <a href="index.html">
+                🏠 Dashboard
+            </a>
+
+            <a href="pets.html" class="active">
+                🐾 Pets
+            </a>
+
+            <a href="products.html">
+                📦 Products
+            </a>
+
+            <a href="customers.html">
+                👥 Customers
+            </a>
+
+            <a href="sales.html">
+                💰 Sales
+            </a>
+
+            <a href="inventory.html">
+                📊 Inventory
+            </a>
+
+            <a href="employees.html">
+                👨‍💼 Employees
+            </a>
+
+            <a href="reports.html">
+                📈 Reports
+            </a>
+
+            <a href="settings.html">
+                ⚙️ Settings
+            </a>
+
+            <button id="logoutButton" class="logout-button logout" type="button">↪ Sign out</button>
+
+        </aside>
+
+
+        <!-- CONTENT -->
+
+        <main>
+
+            <div class="page-header">
+
+                <div>
+
+                    <h2>PETS MANAGEMENT</h2>
+
+                    <p>
+                        Manage all pets available in the pet shop.
+                    </p>
+
+                </div>
+
+                <button class="add-button" type="button">
+                    + Add Pet
+                </button>
+
+            </div>
+
+
+            <!-- SEARCH -->
+
+            <div class="search-box">
+
+                <input
+                    id="searchPetInput"
+                    type="text"
+                    placeholder="Search pet..."
+                >
+
+                <button id="searchPetBtn" type="button">
+                    Search
+                </button>
+
+            </div>
+
+
+            <!-- PET TABLE -->
+
+            <section class="management-table">
+
+                <table>
+
+                    <thead>
+
+                        <tr>
+
+                            <th>ID</th>
+                            <th>Pet Name</th>
+                            <th>Type</th>
+                            <th>Breed</th>
+                            <th>Age</th>
+                            <th>Gender</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+
+                        </tr>
+
+                    </thead>
+
+                    <tbody id="petTableBody">
+
+                    </tbody>
+
+                </table>
+
+            </section>
+
+        </main>
+
+    </div>
+
+    <!-- ADD / EDIT PET MODAL -->
+
+    <div id="petModal" class="modal">
+
+        <div class="modal-content">
+
+            <div class="modal-header">
+
+                <h2 id="modalTitle">Add New Pet</h2>
+
+                <button type="button" class="close-button" onclick="closePetForm()">
+                    ×
+                </button>
+
+            </div>
+
+
+            <form id="petForm">
+
+                <input type="hidden" id="petId">
+
+                <label>
+                    Pet Name
+                </label>
+
+                <input
+                    type="text"
+                    id="petName"
+                    placeholder="Enter pet name"
+                    required
+                >
+
+
+                <label>
+                    Type
+                </label>
+
+                <select id="petType" required>
+
+                    <option value="">
+                        Select type
+                    </option>
+
+                    <option value="Dog">
+                        Dog
+                    </option>
+
+                    <option value="Cat">
+                        Cat
+                    </option>
+
+                    <option value="Rabbit">
+                        Rabbit
+                    </option>
+
+                    <option value="Bird">
+                        Bird
+                    </option>
+
+                    <option value="Other">
+                        Other
+                    </option>
+
+                </select>
+
+
+                <label>
+                    Breed
+                </label>
+
+                <input
+                    type="text"
+                    id="petBreed"
+                    placeholder="Enter breed"
+                    required
+                >
+
+
+                <label>
+                    Age
+                </label>
+
+                <input
+                    type="number"
+                    id="petAge"
+                    placeholder="Enter age"
+                    min="0"
+                    required
+                >
+
+
+                <label>
+                    Gender
+                </label>
+
+                <select id="petGender" required>
+
+                    <option value="">
+                        Select gender
+                    </option>
+
+                    <option value="Male">
+                        Male
+                    </option>
+
+                    <option value="Female">
+                        Female
+                    </option>
+
+                </select>
+
+
+                <label>
+                    Status
+                </label>
+
+                <select id="petStatus" required>
+
+                    <option value="Available">
+                        Available
+                    </option>
+
+                    <option value="Sold">
+                        Sold
+                    </option>
+
+                </select>
+
+
+                <div class="form-buttons">
+
+                    <button
+                        type="button"
+                        class="cancel-button"
+                        onclick="closePetForm()"
+                    >
+                        Cancel
+                    </button>
+
+                    <button
+                        type="submit"
+                        id="submitButton"
+                        class="save-button"
+                    >
+                        Add Pet
+                    </button>
+
+                </div>
+
+            </form>
+
+        </div>
+
+    </div>
+
+
+    <script>
+
+        const STORAGE_KEY = "petShopPets";
+
+        const defaultPets = [
+            {
+                id: "PET-001",
+                name: "Buddy",
+                type: "Dog",
+                breed: "Golden Retriever",
+                age: "2",
+                gender: "Male",
+                status: "Available"
+            },
+            {
+                id: "PET-002",
+                name: "Mimi",
+                type: "Cat",
+                breed: "Persian",
+                age: "1",
+                gender: "Female",
+                status: "Available"
+            },
+            {
+                id: "PET-003",
+                name: "Max",
+                type: "Dog",
+                breed: "Beagle",
+                age: "3",
+                gender: "Male",
+                status: "Sold"
+            },
+            {
+                id: "PET-004",
+                name: "Luna",
+                type: "Cat",
+                breed: "Siamese",
+                age: "2",
+                gender: "Female",
+                status: "Available"
+            }
+        ];
+
+        let pets = JSON.parse(localStorage.getItem(STORAGE_KEY)) || defaultPets;
+
+        function savePets() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(pets));
+        }
+
+        function getStatusClass(status) {
+            return status === "Available" ? "available" : "sold";
+        }
+
+        function openPetForm(mode = "add", pet = null) {
+            const modal = document.getElementById("petModal");
+            const form = document.getElementById("petForm");
+            const modalTitle = document.getElementById("modalTitle");
+            const submitButton = document.getElementById("submitButton");
+
+            form.reset();
+
+            if (mode === "edit" && pet) {
+                document.getElementById("petId").value = pet.id;
+                document.getElementById("petName").value = pet.name;
+                document.getElementById("petType").value = pet.type;
+                document.getElementById("petBreed").value = pet.breed;
+                document.getElementById("petAge").value = pet.age;
+                document.getElementById("petGender").value = pet.gender;
+                document.getElementById("petStatus").value = pet.status;
+
+                modalTitle.textContent = "Edit Pet";
+                submitButton.textContent = "Update Pet";
+            } else {
+                document.getElementById("petId").value = "";
+                modalTitle.textContent = "Add New Pet";
+                submitButton.textContent = "Add Pet";
+            }
+
+            modal.style.display = "flex";
+        }
+
+        function closePetForm() {
+            const modal = document.getElementById("petModal");
+            const form = document.getElementById("petForm");
+
+            form.reset();
+            document.getElementById("petId").value = "";
+            modal.style.display = "none";
+        }
+
+        function renderPets(searchText = "") {
+            const tableBody = document.getElementById("petTableBody");
+            const keyword = searchText.trim().toLowerCase();
+
+            const filteredPets = pets.filter((pet) => {
+                if (!keyword) return true;
+
+                return (
+                    pet.name.toLowerCase().includes(keyword) ||
+                    pet.type.toLowerCase().includes(keyword) ||
+                    pet.breed.toLowerCase().includes(keyword) ||
+                    pet.gender.toLowerCase().includes(keyword) ||
+                    pet.status.toLowerCase().includes(keyword)
+                );
+            });
+
+            tableBody.innerHTML = "";
+
+            if (filteredPets.length === 0) {
+                tableBody.innerHTML = `
+                    <tr>
+                        <td colspan="8" style="text-align:center; padding: 20px; color: #777;">
+                            No pets found.
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            filteredPets.forEach((pet) => {
+                const row = document.createElement("tr");
+                row.dataset.petId = pet.id;
+
+                row.innerHTML = `
+                    <td>${pet.id}</td>
+                    <td>${pet.name}</td>
+                    <td>${pet.type}</td>
+                    <td>${pet.breed}</td>
+                    <td>${pet.age}</td>
+                    <td>${pet.gender}</td>
+                    <td>
+                        <span class="status ${getStatusClass(pet.status)}">
+                            ${pet.status}
+                        </span>
+                    </td>
+                    <td>
+                        <button type="button" class="edit-button">
+                            Edit
+                        </button>
+
+                        <button type="button" class="delete-button">
+                            Delete
+                        </button>
+                    </td>
+                `;
+
+                tableBody.appendChild(row);
+            });
+        }
+
+        document.querySelector(".add-button").addEventListener("click", function () {
+            openPetForm("add");
+        });
+
+        document.getElementById("petForm").addEventListener("submit", function (event) {
+            event.preventDefault();
+
+            const petId = document.getElementById("petId").value;
+            const petData = {
+                id: petId || `PET-${String(Date.now()).slice(-6)}`,
+                name: document.getElementById("petName").value.trim(),
+                type: document.getElementById("petType").value,
+                breed: document.getElementById("petBreed").value.trim(),
+                age: document.getElementById("petAge").value,
+                gender: document.getElementById("petGender").value,
+                status: document.getElementById("petStatus").value
+            };
+
+            if (!petData.name || !petData.type || !petData.breed || !petData.age || !petData.gender) {
+                alert("Please complete all fields.");
+                return;
+            }
+
+            if (petId) {
+                const index = pets.findIndex((pet) => pet.id === petId);
+                if (index !== -1) {
+                    pets[index] = petData;
+                    alert("Pet updated successfully!");
+                }
+            } else {
+                pets.push(petData);
+                alert("Pet added successfully!");
+            }
+
+            savePets();
+            renderPets(document.getElementById("searchPetInput").value);
+
+            closePetForm();
+            document.getElementById("petForm").reset();
+        });
+
+        document.getElementById("petTableBody").addEventListener("click", function (event) {
+            const button = event.target.closest("button");
+            if (!button) return;
+
+            const row = button.closest("tr");
+            const petId = row ? row.dataset.petId : null;
+
+            if (!petId) return;
+
+            const pet = pets.find((item) => item.id === petId);
+
+            if (!pet) return;
+
+            if (button.classList.contains("edit-button")) {
+                openPetForm("edit", pet);
+            }
+
+            if (button.classList.contains("delete-button")) {
+                const confirmDelete = confirm(`Delete ${pet.name}?`);
+
+                if (confirmDelete) {
+                    pets = pets.filter((item) => item.id !== petId);
+                    savePets();
+                    renderPets(document.getElementById("searchPetInput").value);
+                }
+            }
+        });
+
+        document.getElementById("searchPetBtn").addEventListener("click", function () {
+            renderPets(document.getElementById("searchPetInput").value);
+        });
+
+        document.getElementById("searchPetInput").addEventListener("input", function () {
+            renderPets(this.value);
+        });
+
+        renderPets();
+
+    </script>
+
+</body>
+
+</html>

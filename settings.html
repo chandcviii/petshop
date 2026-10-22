@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Settings - PAWPATROL Management System</title>
+
+    <link rel="stylesheet" href="style.css">
+    <script defer src="local-auth.js"></script>
+</head>
+
+<body data-requires-login style="visibility: hidden;">
+
+    <header>
+
+        <div class="logo">
+            <div class="logo-circle">🐶</div>
+            <div class="logo-text">
+                <h1>PAWPATROL</h1>
+                <span>MANAGEMENT SYSTEM</span>
+            </div>
+        </div>
+
+        <div class="admin">
+            <strong id="currentUserEmail">Employee</strong>
+            <small>Signed in</small>
+        </div>
+
+    </header>
+
+    <div class="layout">
+
+        <aside>
+            <a href="index.html">🏠 Dashboard</a>
+            <a href="pets.html">🐾 Pets</a>
+            <a href="products.html">📦 Products</a>
+            <a href="customers.html">👥 Customers</a>
+            <a href="sales.html">💰 Sales</a>
+            <a href="inventory.html">📊 Inventory</a>
+            <a href="employees.html">👨‍💼 Employees</a>
+            <a href="reports.html">📈 Reports</a>
+            <a href="settings.html" class="active">⚙️ Settings</a>
+            <button id="logoutButton" class="logout-button logout" type="button">↪ Sign out</button>
+        </aside>
+
+        <main>
+
+            <div class="page-header">
+                <div>
+                    <h2>SYSTEM SETTINGS</h2>
+                    <p>Update the shop information shown on your dashboard.</p>
+                </div>
+            </div>
+
+            <section class="settings-section">
+                <h3>Shop Information</h3>
+                <p class="settings-description">
+                    These details are saved in this browser and displayed in the dashboard's System Information area.
+                </p>
+
+                <form id="settingsForm" class="settings-form">
+                    <div class="settings-field">
+                        <label for="shopName">Pet Shop Name</label>
+                        <input
+                            type="text"
+                            id="shopName"
+                            maxlength="100"
+                            autocomplete="organization"
+                            required
+                        >
+                    </div>
+
+                    <div class="settings-field">
+                        <label for="shopAddress">Address</label>
+                        <input
+                            type="text"
+                            id="shopAddress"
+                            maxlength="160"
+                            autocomplete="street-address"
+                            required
+                        >
+                    </div>
+
+                    <div class="settings-field">
+                        <label for="shopPhone">Contact Number</label>
+                        <input
+                            type="tel"
+                            id="shopPhone"
+                            maxlength="30"
+                            autocomplete="tel"
+                            required
+                        >
+                    </div>
+
+                    <div class="settings-field">
+                        <label for="shopEmail">Email</label>
+                        <input
+                            type="email"
+                            id="shopEmail"
+                            maxlength="120"
+                            autocomplete="email"
+                            required
+                        >
+                    </div>
+
+                    <div class="settings-field">
+                        <label for="systemVersion">System Version</label>
+                        <input type="text" id="systemVersion" value="1.0" readonly>
+                    </div>
+
+                    <div class="form-buttons settings-actions">
+                        <button class="cancel-button" id="resetSettings" type="button">
+                            Restore Defaults
+                        </button>
+                        <button class="save-button" type="submit">
+                            Save Settings
+                        </button>
+                    </div>
+                    <p id="settingsMessage" class="settings-message" role="status" aria-live="polite"></p>
+                </form>
+            </section>
+
+            <section class="settings-section backup-section">
+                <h3>Data Backup</h3>
+                <p class="settings-description">
+                    Export your saved records to a JSON backup file, or restore records from a backup.
+                    Restoring replaces the current saved pet shop data in this browser.
+                </p>
+
+                <div class="backup-actions">
+                    <button class="save-button" id="exportBackup" type="button">
+                        Download Backup
+                    </button>
+                    <button class="edit-button" id="chooseBackup" type="button">
+                        Restore from Backup
+                    </button>
+                    <input id="backupFile" type="file" accept="application/json,.json" hidden>
+                </div>
+                <p id="backupMessage" class="settings-message" role="status" aria-live="polite"></p>
+            </section>
+
+        </main>
+
+    </div>
+
+    <script>
+        const SETTINGS_KEY = "petShopSettings";
+        const BACKUP_VERSION = 1;
+        const BACKUP_KEYS = [
+            "petShopPets",
+            "petShopProducts",
+            "petShopCustomers",
+            "petShopSales",
+            "petShopEmployees",
+            SETTINGS_KEY
+        ];
+
+        const defaultSettings = {
+            shopName: "Happy Paws Pet Shop",
+            address: "123 Pet Street, Animal City",
+            phone: "0912-345-6789",
+            email: "happypawspetshop@gmail.com",
+            version: "1.0"
+        };
+
+        function loadSettings() {
+            const savedValue = localStorage.getItem(SETTINGS_KEY);
+            if (savedValue === null) {
+                return defaultSettings;
+            }
+
+            const settings = JSON.parse(savedValue);
+            if (!settings || typeof settings !== "object" || Array.isArray(settings)) {
+                throw new Error(`The saved settings in "${SETTINGS_KEY}" are invalid.`);
+            }
+
+            return { ...defaultSettings, ...settings };
+        }
+
+        function fillSettingsForm(settings) {
+            document.getElementById("shopName").value = settings.shopName;
+            document.getElementById("shopAddress").value = settings.address;
+            document.getElementById("shopPhone").value = settings.phone;
+            document.getElementById("shopEmail").value = settings.email;
+            document.getElementById("systemVersion").value = settings.version;
+        }
+
+        const settingsForm = document.getElementById("settingsForm");
+        const settingsMessage = document.getElementById("settingsMessage");
+        const currentSettings = loadSettings();
+        fillSettingsForm(currentSettings);
+
+        settingsForm.addEventListener("submit", (event) => {
+            event.preventDefault();
+
+            const settings = {
+                shopName: document.getElementById("shopName").value.trim(),
+                address: document.getElementById("shopAddress").value.trim(),
+                phone: document.getElementById("shopPhone").value.trim(),
+                email: document.getElementById("shopEmail").value.trim(),
+                version: defaultSettings.version
+            };
+
+            if (!settings.shopName || !settings.address || !settings.phone || !settings.email) {
+                alert("Please complete all shop information fields.");
+                return;
+            }
+
+            try {
+                localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+            } catch (error) {
+                alert(`Could not save settings: ${error.message}`);
+                return;
+            }
+
+            settingsMessage.textContent = "Settings saved. Dashboard information will update when you open or refresh it.";
+            settingsMessage.classList.add("is-visible");
+        });
+
+        document.getElementById("resetSettings").addEventListener("click", () => {
+            if (!confirm("Restore the default shop information?")) {
+                return;
+            }
+
+            try {
+                localStorage.removeItem(SETTINGS_KEY);
+            } catch (error) {
+                alert(`Could not restore default settings: ${error.message}`);
+                return;
+            }
+
+            fillSettingsForm(defaultSettings);
+            settingsMessage.textContent = "Default shop information restored.";
+            settingsMessage.classList.add("is-visible");
+        });
+
+        settingsForm.addEventListener("input", () => {
+            settingsMessage.textContent = "";
+            settingsMessage.classList.remove("is-visible");
+        });
+
+        function showBackupMessage(message, isError = false) {
+            const backupMessage = document.getElementById("backupMessage");
+            backupMessage.textContent = message;
+            backupMessage.classList.add("is-visible");
+            backupMessage.classList.toggle("is-error", isError);
+        }
+
+        function createBackup() {
+            const data = {};
+
+            BACKUP_KEYS.forEach((key) => {
+                const value = localStorage.getItem(key);
+                if (value !== null) {
+                    data[key] = JSON.parse(value);
+                }
+            });
+
+            return {
+                app: "PetShopSystem",
+                version: BACKUP_VERSION,
+                createdAt: new Date().toISOString(),
+                data
+            };
+        }
+
+        document.getElementById("exportBackup").addEventListener("click", () => {
+            try {
+                const backup = createBackup();
+                const file = new Blob([JSON.stringify(backup, null, 2)], {
+                    type: "application/json"
+                });
+                const downloadUrl = URL.createObjectURL(file);
+                const downloadLink = document.createElement("a");
+                downloadLink.href = downloadUrl;
+                downloadLink.download = `pet-shop-backup-${new Date().toISOString().slice(0, 10)}.json`;
+                document.body.appendChild(downloadLink);
+                downloadLink.click();
+                downloadLink.remove();
+                URL.revokeObjectURL(downloadUrl);
+                showBackupMessage("Backup downloaded. Keep the JSON file somewhere safe.");
+            } catch (error) {
+                showBackupMessage(`Could not create backup: ${error.message}`, true);
+            }
+        });
+
+        document.getElementById("chooseBackup").addEventListener("click", () => {
+            document.getElementById("backupFile").click();
+        });
+
+        function validateBackup(backup) {
+            if (
+                !backup ||
+                typeof backup !== "object" ||
+                Array.isArray(backup) ||
+                backup.app !== "PetShopSystem" ||
+                backup.version !== BACKUP_VERSION ||
+                !backup.data ||
+                typeof backup.data !== "object" ||
+                Array.isArray(backup.data)
+            ) {
+                throw new Error("This is not a supported Pet Shop System backup.");
+            }
+
+            const keys = Object.keys(backup.data);
+            if (keys.some((key) => !BACKUP_KEYS.includes(key))) {
+                throw new Error("The backup contains unknown data fields.");
+            }
+
+            keys.forEach((key) => {
+                const value = backup.data[key];
+                if (key === SETTINGS_KEY) {
+                    if (!value || typeof value !== "object" || Array.isArray(value)) {
+                        throw new Error("The backup contains invalid shop settings.");
+                    }
+                    return;
+                }
+
+                if (
+                    !Array.isArray(value) ||
+                    value.some((record) => !record || typeof record !== "object" || Array.isArray(record))
+                ) {
+                    throw new Error(`The backup contains an invalid record list for "${key}".`);
+                }
+            });
+
+            if (keys.length === 0) {
+                throw new Error("The backup does not contain any saved pet shop data.");
+            }
+
+            return keys;
+        }
+
+        document.getElementById("backupFile").addEventListener("change", async (event) => {
+            const fileInput = event.currentTarget;
+            const file = fileInput.files[0];
+            if (!file) {
+                return;
+            }
+
+            try {
+                const backup = JSON.parse(await file.text());
+                const keys = validateBackup(backup);
+
+                if (!confirm("Restore this backup? This will replace the current saved pet shop data in this browser.")) {
+                    return;
+                }
+
+                const previousData = Object.fromEntries(
+                    BACKUP_KEYS.map((key) => [key, localStorage.getItem(key)])
+                );
+
+                try {
+                    BACKUP_KEYS.forEach((key) => {
+                        if (Object.prototype.hasOwnProperty.call(backup.data, key)) {
+                            localStorage.setItem(key, JSON.stringify(backup.data[key]));
+                        } else {
+                            localStorage.removeItem(key);
+                        }
+                    });
+                } catch (error) {
+                    BACKUP_KEYS.forEach((key) => {
+                        const previousValue = previousData[key];
+                        if (previousValue === null) {
+                            localStorage.removeItem(key);
+                        } else {
+                            localStorage.setItem(key, previousValue);
+                        }
+                    });
+                    throw error;
+                }
+
+                fillSettingsForm(loadSettings());
+                showBackupMessage(`Backup restored successfully (${keys.length} data section(s)).`);
+            } catch (error) {
+                showBackupMessage(`Could not restore backup: ${error.message}`, true);
+            } finally {
+                fileInput.value = "";
+            }
+        });
+    </script>
+
+</body>
+
+</html>

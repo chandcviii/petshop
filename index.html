@@ -1,0 +1,1181 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>PAWPATROL - Management System</title>
+
+    <link rel="stylesheet" href="style.css">
+    <style>
+        .dashboard-page header {
+            box-shadow: 0 4px 18px rgba(35, 71, 107, 0.06);
+        }
+
+        .dashboard-page aside {
+            padding-top: 10px;
+            background: linear-gradient(180deg, #fff 0%, #fffafd 100%);
+        }
+
+        .dashboard-page aside a,
+        .dashboard-page .logout-button {
+            position: relative;
+            overflow: hidden;
+            transition: background 180ms ease, color 180ms ease, transform 180ms ease, box-shadow 180ms ease, padding-left 180ms ease, filter 180ms ease;
+        }
+
+        .dashboard-page aside a::before,
+        .dashboard-page .logout-button::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(120deg, rgba(255,255,255,0.85) 0%, rgba(255,255,255,0.18) 35%, rgba(255,255,255,0.02) 100%);
+            opacity: 0;
+            transform: translateX(-110%);
+            transition: transform 260ms ease, opacity 200ms ease;
+            pointer-events: none;
+        }
+
+        .dashboard-page aside a:hover::before,
+        .dashboard-page .logout-button:hover::before {
+            opacity: 1;
+            transform: translateX(110%);
+        }
+
+        .dashboard-page aside a:not(.active):hover {
+            padding-left: 31px;
+            background: linear-gradient(90deg, rgba(223, 82, 118, 0.06), rgba(255,255,255,0.8));
+            box-shadow: inset 0 0 0 1px rgba(223, 82, 118, 0.06);
+            transform: translateX(3px);
+            filter: brightness(1.04);
+        }
+
+        .dashboard-page aside a:active,
+        .dashboard-page .logout-button:active,
+        .dashboard-page aside a.nav-pressed,
+        .dashboard-page .logout-button.nav-pressed {
+            transform: scale(0.98);
+            box-shadow: inset 0 0 0 1px rgba(223, 82, 118, 0.12);
+        }
+
+        .dashboard-page .logout-button:hover {
+            background: linear-gradient(90deg, rgba(223, 82, 118, 0.08), rgba(255,255,255,0.8));
+            transform: translateX(2px);
+            filter: brightness(1.04);
+        }
+
+        .dashboard-page main > h2 {
+            color: #23476b;
+            letter-spacing: 0.04em;
+        }
+
+        .dashboard-welcome {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            min-height: 112px;
+            margin: -4px 0 26px;
+            padding: 22px 28px;
+            overflow: hidden;
+            border: 1px solid rgba(223, 82, 118, 0.12);
+            border-radius: 16px;
+            background:
+                radial-gradient(circle at 88% 15%, rgba(255, 255, 255, 0.72), transparent 26%),
+                linear-gradient(115deg, #fff2f5 0%, #f2f7ff 55%, #fff8ec 100%);
+            box-shadow: 0 9px 26px rgba(35, 71, 107, 0.07);
+            animation: dashboard-rise-in 480ms ease-out both;
+        }
+
+        .dashboard-welcome::after {
+            position: absolute;
+            right: 28px;
+            bottom: -29px;
+            color: rgba(223, 82, 118, 0.11);
+            content: "🐾";
+            font-size: 104px;
+            line-height: 1;
+            transform: rotate(-16deg);
+            pointer-events: none;
+        }
+
+        .dashboard-welcome-copy {
+            position: relative;
+            z-index: 1;
+        }
+
+        .dashboard-welcome-label {
+            display: inline-block;
+            margin-bottom: 7px;
+            color: #c54468;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.12em;
+        }
+
+        .dashboard-welcome h2 {
+            margin: 0;
+            color: #23476b;
+            font-size: 27px;
+            letter-spacing: 0.025em;
+        }
+
+        .dashboard-intro {
+            margin: 6px 0 0;
+            color: #586b82;
+            font-size: 14px;
+        }
+
+        .dashboard-page .cards {
+            margin-top: 0;
+        }
+
+        .card {
+            position: relative;
+            overflow: hidden;
+            border: 1px solid rgba(35, 71, 107, 0.06);
+            box-shadow: 0 5px 16px rgba(35, 71, 107, 0.055);
+            animation: dashboard-rise-in 420ms both;
+        }
+
+        .card:nth-child(2) {
+            animation-delay: 70ms;
+        }
+
+        .card:nth-child(3) {
+            animation-delay: 140ms;
+        }
+
+        .card:nth-child(4) {
+            animation-delay: 210ms;
+        }
+
+        .card::after {
+            position: absolute;
+            top: -34px;
+            right: -26px;
+            width: 105px;
+            height: 105px;
+            border-radius: 50%;
+            background: currentColor;
+            content: "";
+            opacity: 0.045;
+            pointer-events: none;
+            transition: transform 220ms ease, opacity 220ms ease;
+        }
+
+        .card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 13px 25px rgba(35, 71, 107, 0.12);
+        }
+
+        .card:hover::after {
+            transform: scale(1.35);
+            opacity: 0.075;
+        }
+
+        .card.pink {
+            color: #df5276;
+            border-top: 3px solid #df5276;
+        }
+
+        .card.blue {
+            color: #438cc5;
+            border-top: 3px solid #438cc5;
+        }
+
+        .card.green {
+            color: #58a850;
+            border-top: 3px solid #66b85d;
+        }
+
+        .card.orange {
+            color: #d9942e;
+            border-top: 3px solid #e9a23d;
+        }
+
+        .card .icon {
+            transition: transform 220ms ease, box-shadow 220ms ease;
+        }
+
+        .card:hover .icon {
+            transform: rotate(-7deg) scale(1.08);
+            box-shadow: 0 6px 12px rgba(35, 71, 107, 0.14);
+        }
+
+        .card span {
+            color: #697586;
+        }
+
+        .card strong {
+            color: #25354a;
+            font-size: 27px;
+        }
+
+        .card.dashboard-card-click {
+            animation: dashboard-card-tap 240ms ease-out;
+        }
+
+        @keyframes dashboard-card-tap {
+            45% {
+                transform: scale(0.97);
+            }
+
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        @keyframes dashboard-rise-in {
+            from {
+                opacity: 0;
+                transform: translateY(12px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .dashboard-page .tables > section,
+        .dashboard-page .dashboard-shop-info {
+            border: 1px solid rgba(35, 71, 107, 0.06);
+            border-radius: 12px;
+            box-shadow: 0 5px 18px rgba(35, 71, 107, 0.055);
+            animation: dashboard-rise-in 500ms 180ms both;
+            transition: box-shadow 180ms ease, transform 180ms ease;
+        }
+
+        .dashboard-page .tables > section:hover,
+        .dashboard-page .dashboard-shop-info:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 24px rgba(35, 71, 107, 0.09);
+        }
+
+        .dashboard-page section h3 {
+            color: #23476b;
+            border-bottom-color: #edf0f4;
+        }
+
+        .dashboard-page tbody tr {
+            transition: background 160ms ease, transform 160ms ease;
+        }
+
+        .dashboard-page tbody tr:hover {
+            background: #fff7f9;
+        }
+
+        .dashboard-page .dashboard-shop-info {
+            margin-top: 25px;
+            border-left: 4px solid #df5276;
+        }
+
+        .dashboard-page .dashboard-shop-details p {
+            transition: background 160ms ease, padding 160ms ease;
+        }
+
+        .dashboard-page .dashboard-shop-details p:hover {
+            padding-right: 8px;
+            padding-left: 8px;
+            border-radius: 6px;
+            background: #fff7f9;
+        }
+
+        .dashboard-click-feedback {
+            animation: dashboard-click-feedback 300ms ease-out;
+        }
+
+        .dashboard-page aside a.nav-pressed,
+        .dashboard-page .logout-button.nav-pressed {
+            animation: dashboard-sidebar-press 200ms ease-out;
+        }
+
+        @keyframes dashboard-sidebar-press {
+            35% {
+                transform: scale(0.98);
+                box-shadow: 0 0 0 4px rgba(223, 82, 118, 0.12);
+            }
+
+            100% {
+                transform: scale(1);
+                box-shadow: 0 0 0 0 rgba(223, 82, 118, 0);
+            }
+        }
+
+        @keyframes dashboard-click-feedback {
+            35% {
+                transform: scale(0.96);
+                box-shadow: 0 0 0 4px rgba(223, 82, 118, 0.16);
+            }
+
+            100% {
+                transform: scale(1);
+                box-shadow: 0 0 0 0 rgba(223, 82, 118, 0);
+            }
+        }
+
+        .cards {
+            align-items: start;
+        }
+
+        .dashboard-card-content {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .dashboard-view-details {
+            display: inline-flex;
+            align-items: center;
+            margin-top: 8px;
+            padding: 5px 10px;
+            border: 1px solid currentColor;
+            border-radius: 20px;
+            font-family: inherit;
+            font-size: 11px;
+            font-weight: bold;
+            color: #df5276;
+            background: #fff7f9;
+            cursor: pointer;
+            transition: transform 160ms ease, box-shadow 160ms ease;
+        }
+
+        .dashboard-view-details:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 3px 8px rgba(35, 71, 107, 0.12);
+        }
+
+        .dashboard-view-details:active {
+            transform: scale(0.96);
+        }
+
+        .dashboard-view-details:focus-visible {
+            outline: 2px solid currentColor;
+            outline-offset: 3px;
+        }
+
+        .blue .dashboard-view-details {
+            color: #438cc5;
+            background: #f3f8fc;
+        }
+
+        .green .dashboard-view-details {
+            color: #4b9d45;
+            background: #f3faf2;
+        }
+
+        .orange .dashboard-view-details {
+            color: #b97817;
+            background: #fff8ed;
+        }
+
+        .dashboard-card-details {
+            width: 100%;
+            min-width: 0;
+            margin-top: 20px;
+            padding: 20px;
+            border: 1px solid #dce5ef;
+            border-radius: 12px;
+            background: linear-gradient(145deg, #fff, #f5f8fc);
+            box-shadow: 0 8px 22px rgba(35, 71, 107, 0.09);
+            color: #26364a;
+            font-family: "Segoe UI", Arial, sans-serif;
+            cursor: default;
+        }
+
+        .dashboard-card-details[hidden] {
+            display: none;
+        }
+
+        .dashboard-card-details:not([hidden]) {
+            animation: dashboard-detail-enter 200ms ease-out;
+        }
+
+        @keyframes dashboard-detail-enter {
+            from {
+                opacity: 0;
+                transform: translateY(8px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .dashboard-detail-heading {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 14px;
+            color: #23476b;
+            font-size: 15px;
+            font-weight: bold;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+        }
+
+        .dashboard-detail-count {
+            padding: 5px 11px;
+            border-radius: 20px;
+            color: #1f456b;
+            background: #e5eff8;
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: normal;
+            white-space: nowrap;
+        }
+
+        .dashboard-detail-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+            gap: 12px;
+            max-height: 360px;
+            overflow-y: auto;
+            padding: 2px 4px 4px 2px;
+        }
+
+        .dashboard-detail-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 14px;
+            min-width: 0;
+            min-height: 76px;
+            padding: 14px;
+            border: 1px solid #e2e9f0;
+            border-radius: 10px;
+            background: #fff;
+            box-shadow: 0 2px 7px rgba(35, 71, 107, 0.04);
+            transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+        }
+
+        .dashboard-detail-item:hover {
+            transform: translateY(-2px);
+            border-color: #cbd9e8;
+            box-shadow: 0 6px 14px rgba(35, 71, 107, 0.09);
+        }
+
+        .dashboard-detail-item-copy {
+            min-width: 0;
+            flex: 1;
+        }
+
+        .dashboard-detail-item strong,
+        .dashboard-detail-item small {
+            display: block;
+            overflow-wrap: anywhere;
+        }
+
+        .dashboard-detail-item strong {
+            color: #24364b;
+            font-size: 15px;
+            font-weight: 700;
+            line-height: 1.4;
+        }
+
+        .dashboard-detail-item small {
+            margin-top: 5px;
+            color: #526174;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .dashboard-detail-tag {
+            flex-shrink: 0;
+            max-width: 40%;
+            padding: 6px 10px;
+            border-radius: 16px;
+            color: #21476d;
+            background: #eaf2f9;
+            font-size: 12px;
+            font-weight: 700;
+            line-height: 1.4;
+            text-align: center;
+            overflow-wrap: anywhere;
+        }
+
+        .dashboard-detail-empty {
+            margin: 0;
+            padding: 20px;
+            border: 1px dashed #cbd7e3;
+            border-radius: 9px;
+            color: #526174;
+            background: #fff;
+            font-size: 14px;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        @media (max-width: 700px) {
+            .dashboard-card-details {
+                padding: 14px;
+            }
+
+            .dashboard-detail-list {
+                grid-template-columns: 1fr;
+                max-height: 320px;
+            }
+
+            .dashboard-welcome {
+                min-height: 100px;
+                padding: 18px 20px;
+            }
+
+            .dashboard-welcome h2 {
+                font-size: 22px;
+            }
+
+            .dashboard-welcome::after {
+                right: 8px;
+                font-size: 76px;
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .dashboard-page *,
+            .dashboard-view-details,
+            .dashboard-card-details:not([hidden]) {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                scroll-behavior: auto !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+    </style>
+    <script defer src="local-auth.js"></script>
+</head>
+
+<body class="dashboard-page" data-requires-login style="visibility: hidden;">
+
+    <!-- =========================
+         HEADER
+    ========================== -->
+
+    <header>
+
+        <div class="logo">
+
+            <div class="logo-circle">
+                🐶
+            </div>
+
+            <div class="logo-text">
+                <h1>PAWPATROL</h1>
+                <span>MANAGEMENT SYSTEM</span>
+            </div>
+
+        </div>
+
+
+        <div class="admin">
+
+            <strong id="currentUserEmail">Employee</strong>
+            <small>Signed in</small>
+
+        </div>
+
+    </header>
+
+
+
+    <!-- =========================
+         MAIN LAYOUT
+    ========================== -->
+
+    <div class="layout">
+
+
+        <!-- =========================
+             SIDEBAR
+        ========================== -->
+
+        <aside>
+
+            <a href="index.html" class="active">
+                🏠 Dashboard
+            </a>
+
+            <a href="pets.html">
+                🐾 Pets
+            </a>
+
+            <a href="products.html">
+                📦 Products
+            </a>
+
+            <a href="customers.html">
+                👥 Customers
+            </a>
+
+            <a href="sales.html">
+                💰 Sales
+            </a>
+
+            <a href="inventory.html">
+                📊 Inventory
+            </a>
+
+            <a href="employees.html">
+                👨‍💼 Employees
+            </a>
+
+            <a href="reports.html">
+                📈 Reports
+            </a>
+
+            <a href="settings.html">
+                ⚙️ Settings
+            </a>
+
+            <button id="logoutButton" class="logout-button logout" type="button">↪ Sign out</button>
+
+        </aside>
+
+
+
+        <!-- =========================
+             DASHBOARD CONTENT
+        ========================== -->
+
+        <main>
+
+            <section class="dashboard-welcome">
+                <div class="dashboard-welcome-copy">
+                    <span class="dashboard-welcome-label">PAWPATROL · SHOP OVERVIEW</span>
+                    <h2>DASHBOARD</h2>
+                    <p class="dashboard-intro">Your shop at a glance — everything is looking good.</p>
+                </div>
+            </section>
+
+
+            <!-- =========================
+                 STATISTICS CARDS
+            ========================== -->
+
+            <div class="cards">
+                <!-- Total Pets -->
+
+                <div class="card pink">
+
+                    <div class="icon">
+                        🐶
+                    </div>
+
+                    <div class="dashboard-card-content">
+
+                        <span>Total Pets</span>
+
+                        <strong id="totalPets">0</strong>
+
+                        <button class="dashboard-view-details" type="button" data-metric="pets" aria-expanded="false" aria-controls="dashboardMetricDetails">
+                            View Details
+                        </button>
+
+                    </div>
+
+                </div>
+
+
+
+                <!-- Total Products -->
+
+                <div class="card blue">
+
+                    <div class="icon">
+                        📦
+                    </div>
+
+                    <div class="dashboard-card-content">
+
+                        <span>Total Products</span>
+
+                        <strong id="totalProducts">0</strong>
+
+                        <button class="dashboard-view-details" type="button" data-metric="products" aria-expanded="false" aria-controls="dashboardMetricDetails">
+                            View Details
+                        </button>
+
+                    </div>
+
+                </div>
+
+
+
+                <!-- Total Customers -->
+
+                <div class="card green">
+
+                    <div class="icon">
+                        👤
+                    </div>
+
+                    <div class="dashboard-card-content">
+
+                        <span>Total Customers</span>
+
+                        <strong id="totalCustomers">0</strong>
+
+                        <button class="dashboard-view-details" type="button" data-metric="customers" aria-expanded="false" aria-controls="dashboardMetricDetails">
+                            View Details
+                        </button>
+
+                    </div>
+
+                </div>
+
+
+
+                <!-- Today's Sales -->
+
+                <div class="card orange">
+
+                    <div class="icon">
+                        💰
+                    </div>
+
+                    <div class="dashboard-card-content">
+
+                        <span>Today's Sales</span>
+
+                        <strong id="todaySales">₱0.00</strong>
+
+                        <button class="dashboard-view-details" type="button" data-metric="sales" aria-expanded="false" aria-controls="dashboardMetricDetails">
+                            View Details
+                        </button>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+            <section class="dashboard-card-details" id="dashboardMetricDetails" aria-live="polite" hidden></section>
+
+
+
+            <!-- =========================
+                 TABLES
+            ========================== -->
+
+            <div class="tables">
+
+
+                <!-- RECENT SALES -->
+
+                <section>
+
+                    <h3>
+                        🛒 Recent Sales
+                    </h3>
+
+
+                    <table>
+
+                        <thead>
+
+                            <tr>
+
+                                <th>
+                                    Invoice No.
+                                </th>
+
+                                <th>
+                                    Customer
+                                </th>
+
+                                <th>
+                                    Amount
+                                </th>
+
+                                <th>
+                                    Date
+                                </th>
+
+                            </tr>
+
+                        </thead>
+
+
+                        <tbody id="recentSalesBody"></tbody>
+
+                    </table>
+
+                </section>
+
+
+
+                <!-- LOW STOCK -->
+
+                <section>
+
+                    <h3>
+                        ⚠️ Low Stock Products
+                    </h3>
+
+
+                    <table>
+
+                        <thead>
+
+                            <tr>
+
+                                <th>
+                                    Product Name
+                                </th>
+
+                                <th>
+                                    Stock
+                                </th>
+
+                                <th>
+                                    Status
+                                </th>
+
+                            </tr>
+
+                        </thead>
+
+
+                        <tbody id="lowStockBody"></tbody>
+
+                    </table>
+
+                </section>
+
+            </div>
+
+            <section class="dashboard-shop-info">
+                <h3>System Information</h3>
+                <div class="dashboard-shop-details">
+                    <p><strong>Pet Shop Name</strong><span id="dashboardShopName">Happy Paws Pet Shop</span></p>
+                    <p><strong>Address</strong><span id="dashboardShopAddress">123 Pet Street, Animal City</span></p>
+                    <p><strong>Contact No.</strong><span id="dashboardShopPhone">0912-345-6789</span></p>
+                    <p><strong>Email</strong><span id="dashboardShopEmail">happypawspetshop@gmail.com</span></p>
+                </div>
+            </section>
+
+
+        </main>
+
+    </div>
+
+    <script>
+        document.addEventListener("click", (event) => {
+            if (!(event.target instanceof Element)) {
+                return;
+            }
+
+            const control = event.target.closest("button, a, input, select, textarea, [role='button']");
+            if (!control || control.matches(":disabled")) {
+                return;
+            }
+
+            control.classList.remove("dashboard-click-feedback");
+            void control.offsetWidth;
+            control.classList.add("dashboard-click-feedback");
+
+            if (control.matches("aside a, .logout-button")) {
+                control.classList.remove("nav-pressed");
+                void control.offsetWidth;
+                control.classList.add("nav-pressed");
+            }
+        });
+
+        document.addEventListener("animationend", (event) => {
+            if (
+                event.animationName === "dashboard-click-feedback" &&
+                event.target instanceof Element
+            ) {
+                event.target.classList.remove("dashboard-click-feedback");
+            }
+
+            if (
+                event.animationName === "dashboard-card-tap" &&
+                event.target instanceof Element
+            ) {
+                event.target.classList.remove("dashboard-card-click");
+            }
+
+            if (
+                event.target instanceof Element &&
+                event.target.classList.contains("nav-pressed")
+            ) {
+                event.target.classList.remove("nav-pressed");
+            }
+        });
+
+        const DASHBOARD_STORAGE_KEYS = {
+            pets: "petShopPets",
+            products: "petShopProducts",
+            customers: "petShopCustomers",
+            sales: "petShopSales"
+        };
+
+        const DASHBOARD_DEFAULTS = {
+            pets: [
+                { id: "PET-001", name: "Buddy", type: "Dog", breed: "Golden Retriever", age: "2", gender: "Male", status: "Available" },
+                { id: "PET-002", name: "Mimi", type: "Cat", breed: "Persian", age: "1", gender: "Female", status: "Available" },
+                { id: "PET-003", name: "Max", type: "Dog", breed: "Beagle", age: "3", gender: "Male", status: "Sold" },
+                { id: "PET-004", name: "Luna", type: "Cat", breed: "Siamese", age: "2", gender: "Female", status: "Available" }
+            ],
+            products: [
+                { id: "PROD-001", name: "Royal Canin Kitten", category: "Food", price: 850, stock: 3 },
+                { id: "PROD-002", name: "Dog Chew Bones", category: "Treats", price: 150, stock: 2 },
+                { id: "PROD-003", name: "Whiskas Tuna 400g", category: "Food", price: 120, stock: 4 },
+                { id: "PROD-004", name: "Cat Litter 5kg", category: "Grooming", price: 320, stock: 5 },
+                { id: "PROD-005", name: "Pedigree Adult 1kg", category: "Food", price: 280, stock: 6 }
+            ],
+            customers: [
+                { id: "CUST-001", name: "Juan Dela Cruz", phone: "0912-345-6789", email: "juan@example.com", address: "123 Main Street" },
+                { id: "CUST-002", name: "Maria Santos", phone: "0917-234-5678", email: "maria@example.com", address: "45 Mabini Avenue" },
+                { id: "CUST-003", name: "Pedro Reyes", phone: "0920-456-7890", email: "pedro@example.com", address: "8 Rizal Street" }
+            ],
+            sales: []
+        };
+
+        function readDashboardList(name) {
+            const key = DASHBOARD_STORAGE_KEYS[name];
+            const storedValue = localStorage.getItem(key);
+            const list = storedValue === null
+                ? DASHBOARD_DEFAULTS[name]
+                : JSON.parse(storedValue);
+
+            if (!Array.isArray(list)) {
+                throw new Error(`The saved data in "${key}" is not a valid list.`);
+            }
+
+            return list;
+        }
+
+        function appendDashboardCell(row, value) {
+            const cell = document.createElement("td");
+            cell.textContent = value;
+            row.appendChild(cell);
+        }
+
+        function showDashboardMessage(tableBody, message, columnCount) {
+            const row = document.createElement("tr");
+            const cell = document.createElement("td");
+            cell.colSpan = columnCount;
+            cell.textContent = message;
+            cell.style.color = "#777";
+            row.appendChild(cell);
+            tableBody.appendChild(row);
+        }
+
+        function formatDashboardCurrency(value) {
+            return `₱${Number(value).toLocaleString("en-PH", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            })}`;
+        }
+
+        function isToday(dateValue) {
+            const date = new Date(dateValue);
+            const today = new Date();
+            return !Number.isNaN(date.getTime()) &&
+                date.getFullYear() === today.getFullYear() &&
+                date.getMonth() === today.getMonth() &&
+                date.getDate() === today.getDate();
+        }
+
+        const dashboardPets = readDashboardList("pets");
+        const dashboardProducts = readDashboardList("products");
+        const dashboardCustomers = readDashboardList("customers");
+        const dashboardSales = readDashboardList("sales");
+
+        document.getElementById("totalPets").textContent = String(dashboardPets.length);
+        document.getElementById("totalProducts").textContent = String(dashboardProducts.length);
+        document.getElementById("totalCustomers").textContent = String(dashboardCustomers.length);
+
+        const todaysSalesTotal = dashboardSales
+            .filter((sale) => isToday(sale.date))
+            .reduce((total, sale) => total + Number(sale.total), 0);
+        document.getElementById("todaySales").textContent = formatDashboardCurrency(todaysSalesTotal);
+
+        const dashboardSettingsValue = localStorage.getItem("petShopSettings");
+        if (dashboardSettingsValue !== null) {
+            const dashboardSettings = JSON.parse(dashboardSettingsValue);
+            if (
+                !dashboardSettings ||
+                typeof dashboardSettings !== "object" ||
+                Array.isArray(dashboardSettings)
+            ) {
+                throw new Error('The saved shop settings in "petShopSettings" are invalid.');
+            }
+
+            document.getElementById("dashboardShopName").textContent =
+                dashboardSettings.shopName || "Happy Paws Pet Shop";
+            document.getElementById("dashboardShopAddress").textContent =
+                dashboardSettings.address || "123 Pet Street, Animal City";
+            document.getElementById("dashboardShopPhone").textContent =
+                dashboardSettings.phone || "0912-345-6789";
+            document.getElementById("dashboardShopEmail").textContent =
+                dashboardSettings.email || "happypawspetshop@gmail.com";
+        }
+
+        const recentSalesBody = document.getElementById("recentSalesBody");
+        const recentSales = [...dashboardSales]
+            .sort((first, second) => new Date(second.date).getTime() - new Date(first.date).getTime())
+            .slice(0, 5);
+
+        if (recentSales.length === 0) {
+            showDashboardMessage(recentSalesBody, "No sales recorded yet.", 4);
+        } else {
+            recentSales.forEach((sale) => {
+                const row = document.createElement("tr");
+                appendDashboardCell(row, sale.id);
+                appendDashboardCell(row, sale.customerName);
+                appendDashboardCell(row, formatDashboardCurrency(sale.total));
+                const date = new Date(sale.date);
+                appendDashboardCell(row, Number.isNaN(date.getTime()) ? "Invalid date" : date.toLocaleDateString());
+                recentSalesBody.appendChild(row);
+            });
+        }
+
+        const lowStockBody = document.getElementById("lowStockBody");
+        const lowStockProducts = dashboardProducts.filter((product) => {
+            return Number(product.stock) <= 5;
+        });
+
+        if (lowStockProducts.length === 0) {
+            showDashboardMessage(lowStockBody, "No low stock products.", 3);
+        } else {
+            lowStockProducts.forEach((product) => {
+                const row = document.createElement("tr");
+                appendDashboardCell(row, product.name);
+                appendDashboardCell(row, String(product.stock));
+                const statusCell = document.createElement("td");
+                statusCell.className = "low";
+                statusCell.textContent = Number(product.stock) === 0 ? "Out of Stock" : "Low Stock";
+                row.appendChild(statusCell);
+                lowStockBody.appendChild(row);
+            });
+        }
+
+        function createDashboardDetailItem(item) {
+            const row = document.createElement("div");
+            row.className = "dashboard-detail-item";
+
+            const copy = document.createElement("div");
+            copy.className = "dashboard-detail-item-copy";
+
+            const title = document.createElement("strong");
+            title.textContent = item.title;
+            copy.appendChild(title);
+
+            const subtitle = document.createElement("small");
+            subtitle.textContent = item.subtitle;
+            copy.appendChild(subtitle);
+            row.appendChild(copy);
+
+            const tag = document.createElement("span");
+            tag.className = "dashboard-detail-tag";
+            tag.textContent = item.tag;
+            row.appendChild(tag);
+
+            return row;
+        }
+
+        function renderDashboardMetricDetails(metricKey, detailsPanel) {
+            const metricConfig = {
+                pets: {
+                    title: "Pet Records",
+                    items: dashboardPets.map((pet) => ({
+                        title: pet.name,
+                        subtitle: [pet.type, pet.breed, pet.age ? `${pet.age} yr` : ""]
+                            .filter(Boolean)
+                            .join(" · "),
+                        tag: pet.status || "Unlisted"
+                    }))
+                },
+                products: {
+                    title: "Product Stock",
+                    items: dashboardProducts.map((product) => ({
+                        title: product.name,
+                        subtitle: `${product.category || "Product"} · ${formatDashboardCurrency(product.price)}`,
+                        tag: `${product.stock} in stock`
+                    }))
+                },
+                customers: {
+                    title: "Customer Directory",
+                    items: dashboardCustomers.map((customer) => ({
+                        title: customer.name,
+                        subtitle: [customer.email, customer.phone].filter(Boolean).join(" · "),
+                        tag: customer.id || "Customer"
+                    }))
+                },
+                sales: {
+                    title: "Sales Today",
+                    items: dashboardSales
+                        .filter((sale) => isToday(sale.date))
+                        .map((sale) => {
+                            const date = new Date(sale.date);
+                            return {
+                                title: sale.customerName || "Walk-in Customer",
+                                subtitle: `${sale.id || "Sale"}${Number.isNaN(date.getTime()) ? "" : ` · ${date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`}`,
+                                tag: formatDashboardCurrency(sale.total)
+                            };
+                        })
+                }
+            };
+
+            const config = metricConfig[metricKey];
+            if (!config) {
+                return;
+            }
+
+            detailsPanel.replaceChildren();
+
+            const heading = document.createElement("div");
+            heading.className = "dashboard-detail-heading";
+            heading.append(document.createTextNode(config.title));
+
+            const count = document.createElement("span");
+            count.className = "dashboard-detail-count";
+            count.textContent = `${config.items.length} ${config.items.length === 1 ? "record" : "records"}`;
+            heading.appendChild(count);
+            detailsPanel.appendChild(heading);
+
+            if (config.items.length === 0) {
+                const emptyMessage = document.createElement("p");
+                emptyMessage.className = "dashboard-detail-empty";
+                emptyMessage.textContent = "No records to show right now.";
+                detailsPanel.appendChild(emptyMessage);
+                return;
+            }
+
+            const list = document.createElement("div");
+            list.className = "dashboard-detail-list";
+            config.items.forEach((item) => list.appendChild(createDashboardDetailItem(item)));
+            detailsPanel.appendChild(list);
+        }
+
+        document.querySelectorAll(".dashboard-view-details[data-metric]").forEach((button) => {
+            const detailsPanel = document.getElementById(button.getAttribute("aria-controls"));
+
+            button.addEventListener("click", () => {
+                const isExpanded = button.getAttribute("aria-expanded") === "true";
+
+                document.querySelectorAll(".dashboard-view-details[data-metric]").forEach((otherButton) => {
+                    if (otherButton !== button) {
+                        otherButton.setAttribute("aria-expanded", "false");
+                    }
+                });
+
+                button.setAttribute("aria-expanded", String(!isExpanded));
+                detailsPanel.hidden = isExpanded;
+
+                if (!isExpanded) {
+                    renderDashboardMetricDetails(button.dataset.metric, detailsPanel);
+                }
+            });
+        });
+    </script>
+
+</body>
+
+</html>

@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Reports - PAWPATROL Management System</title>
+
+    <link rel="stylesheet" href="style.css">
+    <script defer src="local-auth.js"></script>
+</head>
+
+<body data-requires-login style="visibility: hidden;">
+
+    <header>
+
+        <div class="logo">
+            <div class="logo-circle">🐶</div>
+            <div class="logo-text">
+                <h1>PAWPATROL</h1>
+                <span>MANAGEMENT SYSTEM</span>
+            </div>
+        </div>
+
+        <div class="admin">
+            <strong id="currentUserEmail">Employee</strong>
+            <small>Signed in</small>
+        </div>
+
+    </header>
+
+    <div class="layout">
+
+        <aside>
+            <a href="index.html">🏠 Dashboard</a>
+            <a href="pets.html">🐾 Pets</a>
+            <a href="products.html">📦 Products</a>
+            <a href="customers.html">👥 Customers</a>
+            <a href="sales.html">💰 Sales</a>
+            <a href="inventory.html">📊 Inventory</a>
+            <a href="employees.html">👨‍💼 Employees</a>
+            <a href="reports.html" class="active">📈 Reports</a>
+            <a href="settings.html">⚙️ Settings</a>
+            <button id="logoutButton" class="logout-button logout" type="button">↪ Sign out</button>
+        </aside>
+
+        <main>
+
+            <div class="page-header">
+                <div>
+                    <h2>REPORTS</h2>
+                    <p>Review sales performance and current stock alerts.</p>
+                </div>
+            </div>
+
+            <section class="report-filters">
+                <form id="reportFilterForm">
+                    <div class="report-date-field">
+                        <label for="reportStartDate">From</label>
+                        <input type="date" id="reportStartDate">
+                    </div>
+
+                    <div class="report-date-field">
+                        <label for="reportEndDate">To</label>
+                        <input type="date" id="reportEndDate">
+                    </div>
+
+                    <button class="add-button" type="submit">Apply Dates</button>
+                    <button class="cancel-button" id="clearReportDates" type="button">Show All</button>
+                </form>
+                <p id="reportPeriod" class="report-period">Showing all recorded sales</p>
+            </section>
+
+            <div class="cards report-cards">
+                <div class="card pink">
+                    <div class="icon">₱</div>
+                    <div>
+                        <span>Sales Revenue</span>
+                        <strong id="reportRevenue">₱0.00</strong>
+                        <small>For selected period</small>
+                    </div>
+                </div>
+
+                <div class="card blue">
+                    <div class="icon">🧾</div>
+                    <div>
+                        <span>Transactions</span>
+                        <strong id="reportTransactionCount">0</strong>
+                        <small>Completed sales</small>
+                    </div>
+                </div>
+
+                <div class="card green">
+                    <div class="icon">📦</div>
+                    <div>
+                        <span>Units Sold</span>
+                        <strong id="reportUnitsSold">0</strong>
+                        <small>For selected period</small>
+                    </div>
+                </div>
+
+                <div class="card orange">
+                    <div class="icon">📊</div>
+                    <div>
+                        <span>Average Sale</span>
+                        <strong id="reportAverageSale">₱0.00</strong>
+                        <small>Per transaction</small>
+                    </div>
+                </div>
+            </div>
+
+            <section class="management-table report-table-section">
+                <h3>Sales Transactions</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Invoice No.</th>
+                            <th>Date</th>
+                            <th>Customer</th>
+                            <th>Product</th>
+                            <th>Quantity</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody id="reportSalesBody"></tbody>
+                </table>
+            </section>
+
+            <section class="management-table report-table-section">
+                <h3>Low Stock Products</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Product</th>
+                            <th>Category</th>
+                            <th>Units in Stock</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="reportLowStockBody"></tbody>
+                </table>
+            </section>
+
+        </main>
+
+    </div>
+
+    <script>
+        const SALES_KEY = "petShopSales";
+        const PRODUCTS_KEY = "petShopProducts";
+        const LOW_STOCK_THRESHOLD = 5;
+
+        const defaultProducts = [
+            { id: "PROD-001", name: "Royal Canin Kitten", category: "Food", price: 850, stock: 3 },
+            { id: "PROD-002", name: "Dog Chew Bones", category: "Treats", price: 150, stock: 2 },
+            { id: "PROD-003", name: "Whiskas Tuna 400g", category: "Food", price: 120, stock: 4 },
+            { id: "PROD-004", name: "Cat Litter 5kg", category: "Grooming", price: 320, stock: 5 },
+            { id: "PROD-005", name: "Pedigree Adult 1kg", category: "Food", price: 280, stock: 6 }
+        ];
+
+        function loadList(key, defaultValue) {
+            const savedValue = localStorage.getItem(key);
+            const list = savedValue === null ? defaultValue : JSON.parse(savedValue);
+
+            if (!Array.isArray(list)) {
+                throw new Error(`The saved data in "${key}" is not a valid list.`);
+            }
+
+            return list;
+        }
+
+        const sales = loadList(SALES_KEY, []);
+        const products = loadList(PRODUCTS_KEY, defaultProducts);
+
+        function formatCurrency(value) {
+            return `₱${Number(value).toLocaleString("en-PH", {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            })}`;
+        }
+
+        function appendCell(row, text) {
+            const cell = document.createElement("td");
+            cell.textContent = text;
+            row.appendChild(cell);
+            return cell;
+        }
+
+        function getSaleDateKey(dateValue) {
+            const date = new Date(dateValue);
+            if (Number.isNaN(date.getTime())) {
+                return "";
+            }
+
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, "0");
+            const day = String(date.getDate()).padStart(2, "0");
+            return `${year}-${month}-${day}`;
+        }
+
+        function showEmptyRow(tableBody, message, columnCount) {
+            const row = document.createElement("tr");
+            const cell = appendCell(row, message);
+            cell.colSpan = columnCount;
+            cell.style.textAlign = "center";
+            cell.style.padding = "20px";
+            cell.style.color = "#777";
+            tableBody.appendChild(row);
+        }
+
+        function renderSalesReport(startDate = "", endDate = "") {
+            const filteredSales = sales
+                .filter((sale) => {
+                    const saleDate = getSaleDateKey(sale.date);
+                    if (!saleDate) {
+                        return false;
+                    }
+
+                    return (!startDate || saleDate >= startDate) &&
+                        (!endDate || saleDate <= endDate);
+                })
+                .sort((first, second) => new Date(second.date).getTime() - new Date(first.date).getTime());
+
+            const revenue = filteredSales.reduce((total, sale) => total + Number(sale.total), 0);
+            const unitsSold = filteredSales.reduce((total, sale) => total + Number(sale.quantity), 0);
+            const averageSale = filteredSales.length ? revenue / filteredSales.length : 0;
+
+            document.getElementById("reportRevenue").textContent = formatCurrency(revenue);
+            document.getElementById("reportTransactionCount").textContent = String(filteredSales.length);
+            document.getElementById("reportUnitsSold").textContent = String(unitsSold);
+            document.getElementById("reportAverageSale").textContent = formatCurrency(averageSale);
+
+            const salesBody = document.getElementById("reportSalesBody");
+            salesBody.replaceChildren();
+
+            if (filteredSales.length === 0) {
+                showEmptyRow(
+                    salesBody,
+                    sales.length === 0 ? "No sales have been recorded yet." : "No sales in this date range.",
+                    6
+                );
+            } else {
+                filteredSales.forEach((sale) => {
+                    const row = document.createElement("tr");
+                    const date = new Date(sale.date);
+                    appendCell(row, sale.id);
+                    appendCell(row, Number.isNaN(date.getTime()) ? "Invalid date" : date.toLocaleString());
+                    appendCell(row, sale.customerName);
+                    appendCell(row, sale.productName);
+                    appendCell(row, String(sale.quantity));
+                    appendCell(row, formatCurrency(sale.total));
+                    salesBody.appendChild(row);
+                });
+            }
+
+            const startLabel = startDate
+                ? new Date(`${startDate}T00:00:00`).toLocaleDateString()
+                : "";
+            const endLabel = endDate
+                ? new Date(`${endDate}T00:00:00`).toLocaleDateString()
+                : "";
+
+            let periodLabel = "Showing all recorded sales";
+            if (startDate && endDate) {
+                periodLabel = `Showing sales from ${startLabel} to ${endLabel}`;
+            } else if (startDate) {
+                periodLabel = `Showing sales from ${startLabel} onward`;
+            } else if (endDate) {
+                periodLabel = `Showing sales through ${endLabel}`;
+            }
+
+            document.getElementById("reportPeriod").textContent = periodLabel;
+        }
+
+        function renderLowStockReport() {
+            const lowStockProducts = products
+                .filter((product) => Number(product.stock) <= LOW_STOCK_THRESHOLD)
+                .sort((first, second) => Number(first.stock) - Number(second.stock));
+            const tableBody = document.getElementById("reportLowStockBody");
+            tableBody.replaceChildren();
+
+            if (lowStockProducts.length === 0) {
+                showEmptyRow(tableBody, "No low stock products.", 4);
+                return;
+            }
+
+            lowStockProducts.forEach((product) => {
+                const stock = Number(product.stock);
+                const row = document.createElement("tr");
+                appendCell(row, product.name);
+                appendCell(row, product.category);
+                appendCell(row, String(stock));
+                const statusCell = document.createElement("td");
+                statusCell.className = "low";
+                statusCell.textContent = stock === 0 ? "Out of Stock" : "Low Stock";
+                row.appendChild(statusCell);
+                tableBody.appendChild(row);
+            });
+        }
+
+        document.getElementById("reportFilterForm").addEventListener("submit", (event) => {
+            event.preventDefault();
+
+            const startDate = document.getElementById("reportStartDate").value;
+            const endDate = document.getElementById("reportEndDate").value;
+
+            if (startDate && endDate && startDate > endDate) {
+                alert("The start date must be on or before the end date.");
+                return;
+            }
+
+            renderSalesReport(startDate, endDate);
+        });
+
+        document.getElementById("clearReportDates").addEventListener("click", () => {
+            document.getElementById("reportFilterForm").reset();
+            renderSalesReport();
+        });
+
+        renderSalesReport();
+        renderLowStockReport();
+    </script>
+
+</body>
+
+</html>

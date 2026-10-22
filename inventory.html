@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Inventory - PAWPATROL Management System</title>
+
+    <link rel="stylesheet" href="style.css">
+    <script defer src="local-auth.js"></script>
+</head>
+
+<body data-requires-login style="visibility: hidden;">
+
+    <header>
+
+        <div class="logo">
+            <div class="logo-circle">🐶</div>
+            <div class="logo-text">
+                <h1>PAWPATROL</h1>
+                <span>MANAGEMENT SYSTEM</span>
+            </div>
+        </div>
+
+        <div class="admin">
+            <strong id="currentUserEmail">Employee</strong>
+            <small>Signed in</small>
+        </div>
+
+    </header>
+
+    <div class="layout">
+
+        <aside>
+            <a href="index.html">🏠 Dashboard</a>
+            <a href="pets.html">🐾 Pets</a>
+            <a href="products.html">📦 Products</a>
+            <a href="customers.html">👥 Customers</a>
+            <a href="sales.html">💰 Sales</a>
+            <a href="inventory.html" class="active">📊 Inventory</a>
+            <a href="employees.html">👨‍💼 Employees</a>
+            <a href="reports.html">📈 Reports</a>
+            <a href="settings.html">⚙️ Settings</a>
+            <button id="logoutButton" class="logout-button logout" type="button">↪ Sign out</button>
+        </aside>
+
+        <main>
+
+            <div class="page-header">
+                <div>
+                    <h2>INVENTORY MANAGEMENT</h2>
+                    <p>Review product stock and record restocks.</p>
+                </div>
+            </div>
+
+            <div class="cards inventory-cards">
+                <div class="card pink">
+                    <div class="icon">📦</div>
+                    <div>
+                        <span>Products</span>
+                        <strong id="inventoryProductCount">0</strong>
+                        <small>Tracked products</small>
+                    </div>
+                </div>
+
+                <div class="card blue">
+                    <div class="icon">📊</div>
+                    <div>
+                        <span>Total Units</span>
+                        <strong id="inventoryUnitCount">0</strong>
+                        <small>Units currently in stock</small>
+                    </div>
+                </div>
+
+                <div class="card orange">
+                    <div class="icon">⚠️</div>
+                    <div>
+                        <span>Needs Attention</span>
+                        <strong id="inventoryAttentionCount">0</strong>
+                        <small>Low or out of stock</small>
+                    </div>
+                </div>
+            </div>
+
+            <div class="search-box">
+                <input
+                    id="searchInventoryInput"
+                    type="search"
+                    placeholder="Search inventory..."
+                    aria-label="Search inventory"
+                >
+                <button id="searchInventoryButton" type="button">Search</button>
+            </div>
+
+            <section class="management-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Product Name</th>
+                            <th>Category</th>
+                            <th>Unit Price</th>
+                            <th>Stock</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="inventoryTableBody"></tbody>
+                </table>
+            </section>
+
+        </main>
+
+    </div>
+
+    <div id="restockModal" class="modal" aria-hidden="true">
+        <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="restockModalTitle">
+            <div class="modal-header">
+                <h2 id="restockModalTitle">Restock Product</h2>
+                <button class="close-button" id="closeRestockModal" type="button" aria-label="Close">
+                    ×
+                </button>
+            </div>
+
+            <form id="restockForm">
+                <input type="hidden" id="restockProductId">
+
+                <p id="restockProductDetails" class="inventory-restock-details"></p>
+
+                <label for="restockQuantity">Quantity to Add</label>
+                <input
+                    type="number"
+                    id="restockQuantity"
+                    min="1"
+                    step="1"
+                    value="1"
+                    required
+                >
+
+                <div class="form-buttons">
+                    <button class="cancel-button" id="cancelRestockForm" type="button">
+                        Cancel
+                    </button>
+                    <button class="save-button" type="submit">
+                        Add to Stock
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const PRODUCTS_KEY = "petShopProducts";
+        const LOW_STOCK_THRESHOLD = 5;
+
+        const defaultProducts = [
+            { id: "PROD-001", name: "Royal Canin Kitten", category: "Food", price: 850, stock: 3 },
+            { id: "PROD-002", name: "Dog Chew Bones", category: "Treats", price: 150, stock: 2 },
+            { id: "PROD-003", name: "Whiskas Tuna 400g", category: "Food", price: 120, stock: 4 },
+            { id: "PROD-004", name: "Cat Litter 5kg", category: "Grooming", price: 320, stock: 5 },
+            { id: "PROD-005", name: "Pedigree Adult 1kg", category: "Food", price: 280, stock: 6 }
+        ];
+
+        const storedProducts = localStorage.getItem(PRODUCTS_KEY);
+        let products = storedProducts === null
+            ? defaultProducts
+            : JSON.parse(storedProducts);
+
+        if (!Array.isArray(products)) {
+            throw new Error(`The saved product data in "${PRODUCTS_KEY}" is not a valid list.`);
+        }
+
+        const inventoryTableBody = document.getElementById("inventoryTableBody");
+        const restockModal = document.getElementById("restockModal");
+        const restockForm = document.getElementById("restockForm");
+        const searchInventoryInput = document.getElementById("searchInventoryInput");
+
+        function formatCurrency(value) {
+            return `₱${Number(value).toFixed(2)}`;
+        }
+
+        function getStockStatus(stock) {
+            if (stock === 0) {
+                return { label: "Out of Stock", className: "sold" };
+            }
+
+            if (stock <= LOW_STOCK_THRESHOLD) {
+                return { label: "Low Stock", className: "low-stock" };
+            }
+
+            return { label: "In Stock", className: "available" };
+        }
+
+        function appendCell(row, text) {
+            const cell = document.createElement("td");
+            cell.textContent = text;
+            row.appendChild(cell);
+            return cell;
+        }
+
+        function updateInventorySummary() {
+            document.getElementById("inventoryProductCount").textContent = String(products.length);
+            document.getElementById("inventoryUnitCount").textContent = String(
+                products.reduce((total, product) => total + Number(product.stock), 0)
+            );
+            document.getElementById("inventoryAttentionCount").textContent = String(
+                products.filter((product) => Number(product.stock) <= LOW_STOCK_THRESHOLD).length
+            );
+        }
+
+        function renderInventory(searchText = "") {
+            updateInventorySummary();
+
+            const keyword = searchText.trim().toLowerCase();
+            const filteredProducts = products.filter((product) => {
+                const status = getStockStatus(Number(product.stock)).label;
+                return [
+                    product.id,
+                    product.name,
+                    product.category,
+                    String(product.price),
+                    String(product.stock),
+                    status
+                ].some((value) => String(value).toLowerCase().includes(keyword));
+            });
+
+            inventoryTableBody.replaceChildren();
+
+            if (filteredProducts.length === 0) {
+                const row = document.createElement("tr");
+                const cell = appendCell(row, products.length === 0
+                    ? "No products to track. Add products on the Products page."
+                    : "No inventory items found.");
+                cell.colSpan = 7;
+                cell.style.textAlign = "center";
+                cell.style.padding = "20px";
+                cell.style.color = "#777";
+                inventoryTableBody.appendChild(row);
+                return;
+            }
+
+            filteredProducts.forEach((product) => {
+                const row = document.createElement("tr");
+                row.dataset.productId = product.id;
+
+                appendCell(row, product.id);
+                appendCell(row, product.name);
+                appendCell(row, product.category);
+                appendCell(row, formatCurrency(product.price));
+                appendCell(row, String(product.stock));
+
+                const status = getStockStatus(Number(product.stock));
+                const statusCell = document.createElement("td");
+                const badge = document.createElement("span");
+                badge.className = `status ${status.className}`;
+                badge.textContent = status.label;
+                statusCell.appendChild(badge);
+                row.appendChild(statusCell);
+
+                const actionCell = document.createElement("td");
+                const restockButton = document.createElement("button");
+                restockButton.type = "button";
+                restockButton.className = "edit-button";
+                restockButton.textContent = "Restock";
+                actionCell.appendChild(restockButton);
+                row.appendChild(actionCell);
+
+                inventoryTableBody.appendChild(row);
+            });
+
+        }
+
+        function openRestockForm(product) {
+            restockForm.reset();
+            document.getElementById("restockProductId").value = product.id;
+            document.getElementById("restockModalTitle").textContent = `Restock ${product.name}`;
+            document.getElementById("restockProductDetails").textContent =
+                `Current stock: ${product.stock} | Unit price: ${formatCurrency(product.price)}`;
+            document.getElementById("restockQuantity").value = "1";
+            restockModal.style.display = "flex";
+            restockModal.setAttribute("aria-hidden", "false");
+            document.getElementById("restockQuantity").focus();
+        }
+
+        function closeRestockForm() {
+            restockForm.reset();
+            restockModal.style.display = "none";
+            restockModal.setAttribute("aria-hidden", "true");
+        }
+
+        inventoryTableBody.addEventListener("click", (event) => {
+            const button = event.target.closest("button");
+            const row = button && button.closest("tr");
+
+            if (!button || !row || !row.dataset.productId) {
+                return;
+            }
+
+            const product = products.find((item) => item.id === row.dataset.productId);
+            if (product) {
+                openRestockForm(product);
+            }
+        });
+
+        document.getElementById("closeRestockModal").addEventListener("click", closeRestockForm);
+        document.getElementById("cancelRestockForm").addEventListener("click", closeRestockForm);
+
+        restockModal.addEventListener("click", (event) => {
+            if (event.target === restockModal) {
+                closeRestockForm();
+            }
+        });
+
+        document.addEventListener("keydown", (event) => {
+            if (event.key === "Escape" && restockModal.style.display === "flex") {
+                closeRestockForm();
+            }
+        });
+
+        restockForm.addEventListener("submit", (event) => {
+            event.preventDefault();
+
+            const productId = document.getElementById("restockProductId").value;
+            const quantity = Number(document.getElementById("restockQuantity").value);
+            const productIndex = products.findIndex((item) => item.id === productId);
+
+            if (productIndex === -1) {
+                alert("This product could not be found. Refresh the page and try again.");
+                return;
+            }
+
+            if (!Number.isInteger(quantity) || quantity < 1) {
+                alert("Enter a whole-number restock quantity greater than zero.");
+                return;
+            }
+
+            const updatedProducts = products.map((product, index) => {
+                return index === productIndex
+                    ? { ...product, stock: Number(product.stock) + quantity }
+                    : product;
+            });
+
+            try {
+                localStorage.setItem(PRODUCTS_KEY, JSON.stringify(updatedProducts));
+            } catch (error) {
+                alert(`Could not save the stock update: ${error.message}`);
+                return;
+            }
+
+            products = updatedProducts;
+            renderInventory(searchInventoryInput.value);
+            closeRestockForm();
+        });
+
+        document.getElementById("searchInventoryButton").addEventListener("click", () => {
+            renderInventory(searchInventoryInput.value);
+        });
+
+        searchInventoryInput.addEventListener("input", () => {
+            renderInventory(searchInventoryInput.value);
+        });
+
+        renderInventory();
+    </script>
+
+</body>
+
+</html>

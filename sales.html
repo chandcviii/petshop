@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Sales - PAWPATROL Management System</title>
+
+    <link rel="stylesheet" href="style.css">
+    <script defer src="local-auth.js"></script>
+</head>
+
+<body data-requires-login style="visibility: hidden;">
+
+    <header>
+
+        <div class="logo">
+            <div class="logo-circle">🐶</div>
+            <div class="logo-text">
+                <h1>PAWPATROL</h1>
+                <span>MANAGEMENT SYSTEM</span>
+            </div>
+        </div>
+
+        <div class="admin">
+            <strong id="currentUserEmail">Employee</strong>
+            <small>Signed in</small>
+        </div>
+
+    </header>
+
+    <div class="layout">
+
+        <aside>
+            <a href="index.html">🏠 Dashboard</a>
+            <a href="pets.html">🐾 Pets</a>
+            <a href="products.html">📦 Products</a>
+            <a href="customers.html">👥 Customers</a>
+            <a href="sales.html" class="active">💰 Sales</a>
+            <a href="inventory.html">📊 Inventory</a>
+            <a href="employees.html">👨‍💼 Employees</a>
+            <a href="reports.html">📈 Reports</a>
+            <a href="settings.html">⚙️ Settings</a>
+            <button id="logoutButton" class="logout-button logout" type="button">↪ Sign out</button>
+        </aside>
+
+        <main>
+
+            <div class="page-header">
+                <div>
+                    <h2>SALES MANAGEMENT</h2>
+                    <p>Record sales and review your transaction history.</p>
+                </div>
+
+                <button class="add-button" id="newSaleButton" type="button">
+                    + New Sale
+                </button>
+            </div>
+
+            <div class="search-box">
+                <input
+                    id="searchSaleInput"
+                    type="search"
+                    placeholder="Search sales..."
+                    aria-label="Search sales"
+                >
+                <button id="searchSaleButton" type="button">Search</button>
+            </div>
+
+            <section class="management-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Invoice No.</th>
+                            <th>Date</th>
+                            <th>Customer</th>
+                            <th>Product</th>
+                            <th>Quantity</th>
+                            <th>Unit Price</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody id="salesTableBody"></tbody>
+                </table>
+            </section>
+
+        </main>
+
+    </div>
+
+    <div id="saleModal" class="modal" aria-hidden="true">
+        <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="saleModalTitle">
+            <div class="modal-header">
+                <h2 id="saleModalTitle">Record a Sale</h2>
+                <button class="close-button" id="closeSaleModal" type="button" aria-label="Close">
+                    ×
+                </button>
+            </div>
+
+            <form id="saleForm">
+                <label for="saleCustomer">Customer</label>
+                <select id="saleCustomer" required></select>
+
+                <label for="saleProduct">Product</label>
+                <select id="saleProduct" required></select>
+
+                <label for="saleQuantity">Quantity</label>
+                <input
+                    type="number"
+                    id="saleQuantity"
+                    value="1"
+                    min="1"
+                    step="1"
+                    required
+                >
+
+                <p id="stockMessage" class="sale-hint" aria-live="polite"></p>
+                <p class="sale-total">
+                    Sale total: <strong id="saleTotal">₱0.00</strong>
+                </p>
+
+                <div class="form-buttons">
+                    <button class="cancel-button" id="cancelSaleForm" type="button">
+                        Cancel
+                    </button>
+                    <button class="save-button" id="submitSaleButton" type="submit">
+                        Complete Sale
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const PRODUCTS_KEY = "petShopProducts";
+        const CUSTOMERS_KEY = "petShopCustomers";
+        const SALES_KEY = "petShopSales";
+
+        const defaultProducts = [
+            { id: "PROD-001", name: "Royal Canin Kitten", category: "Food", price: 850, stock: 3 },
+            { id: "PROD-002", name: "Dog Chew Bones", category: "Treats", price: 150, stock: 2 },
+            { id: "PROD-003", name: "Whiskas Tuna 400g", category: "Food", price: 120, stock: 4 },
+            { id: "PROD-004", name: "Cat Litter 5kg", category: "Grooming", price: 320, stock: 5 },
+            { id: "PROD-005", name: "Pedigree Adult 1kg", category: "Food", price: 280, stock: 6 }
+        ];
+
+        const defaultCustomers = [
+            { id: "CUST-001", name: "Juan Dela Cruz", phone: "0912-345-6789", email: "juan@example.com", address: "123 Main Street" },
+            { id: "CUST-002", name: "Maria Santos", phone: "0917-234-5678", email: "maria@example.com", address: "45 Mabini Avenue" },
+            { id: "CUST-003", name: "Pedro Reyes", phone: "0920-456-7890", email: "pedro@example.com", address: "8 Rizal Street" }
+        ];
+
+        function loadList(key, defaults) {
+            const savedValue = localStorage.getItem(key);
+            const value = savedValue === null ? defaults : JSON.parse(savedValue);
+
+            if (!Array.isArray(value)) {
+                throw new Error(`The saved data in "${key}" is not a valid list.`);
+            }
+
+            return value;
+        }
+
+        let products = loadList(PRODUCTS_KEY, defaultProducts);
+        const customers = loadList(CUSTOMERS_KEY, defaultCustomers);
+        let sales = loadList(SALES_KEY, []);
+
+        const saleForm = document.getElementById("saleForm");
+        const saleModal = document.getElementById("saleModal");
+        const customerSelect = document.getElementById("saleCustomer");
+        const productSelect = document.getElementById("saleProduct");
+        const quantityInput = document.getElementById("saleQuantity");
+        const salesTableBody = document.getElementById("salesTableBody");
+        const searchSaleInput = document.getElementById("searchSaleInput");
+
+        function formatCurrency(value) {
+            return `₱${Number(value).toFixed(2)}`;
+        }
+
+        function appendCell(row, text) {
+            const cell = document.createElement("td");
+            cell.textContent = text;
+            row.appendChild(cell);
+            return cell;
+        }
+
+        function renderSales(searchText = "") {
+            const keyword = searchText.trim().toLowerCase();
+            const filteredSales = sales.filter((sale) => {
+                return [
+                    sale.id,
+                    sale.customerName,
+                    sale.productName,
+                    sale.date,
+                    String(sale.quantity),
+                    String(sale.total)
+                ].some((value) => String(value).toLowerCase().includes(keyword));
+            });
+
+            salesTableBody.replaceChildren();
+
+            if (filteredSales.length === 0) {
+                const row = document.createElement("tr");
+                const cell = appendCell(row, sales.length === 0 ? "No sales recorded yet." : "No sales found.");
+                cell.colSpan = 7;
+                cell.style.textAlign = "center";
+                cell.style.padding = "20px";
+                cell.style.color = "#777";
+                salesTableBody.appendChild(row);
+                return;
+            }
+
+            filteredSales.forEach((sale) => {
+                const row = document.createElement("tr");
+                appendCell(row, sale.id);
+                appendCell(row, new Date(sale.date).toLocaleString());
+                appendCell(row, sale.customerName);
+                appendCell(row, sale.productName);
+                appendCell(row, String(sale.quantity));
+                appendCell(row, formatCurrency(sale.unitPrice));
+                appendCell(row, formatCurrency(sale.total));
+                salesTableBody.appendChild(row);
+            });
+        }
+
+        function populateCustomerOptions() {
+            customerSelect.replaceChildren();
+            const placeholder = document.createElement("option");
+            placeholder.value = "";
+            placeholder.textContent = customers.length
+                ? "Select customer"
+                : "Add a customer first";
+            customerSelect.appendChild(placeholder);
+
+            customers.forEach((customer) => {
+                const option = document.createElement("option");
+                option.value = customer.id;
+                option.textContent = customer.name;
+                customerSelect.appendChild(option);
+            });
+
+            customerSelect.disabled = customers.length === 0;
+        }
+
+        function populateProductOptions() {
+            productSelect.replaceChildren();
+            const placeholder = document.createElement("option");
+            placeholder.value = "";
+            placeholder.textContent = products.length
+                ? "Select product"
+                : "Add a product first";
+            productSelect.appendChild(placeholder);
+
+            products.forEach((product) => {
+                const option = document.createElement("option");
+                const stock = Number(product.stock);
+                option.value = product.id;
+                option.textContent = `${product.name} — ${formatCurrency(product.price)} (${stock} in stock)`;
+                option.disabled = stock < 1;
+                productSelect.appendChild(option);
+            });
+
+            productSelect.disabled = products.length === 0;
+        }
+
+        function getSelectedProduct() {
+            return products.find((product) => product.id === productSelect.value);
+        }
+
+        function updateSaleSummary() {
+            const product = getSelectedProduct();
+            const quantity = Number(quantityInput.value);
+            const total = product && Number.isInteger(quantity) && quantity > 0
+                ? Number(product.price) * quantity
+                : 0;
+
+            document.getElementById("saleTotal").textContent = formatCurrency(total);
+
+            const stockMessage = document.getElementById("stockMessage");
+            if (!product) {
+                stockMessage.textContent = "";
+                quantityInput.removeAttribute("max");
+                return;
+            }
+
+            const stock = Number(product.stock);
+            quantityInput.max = String(stock);
+            stockMessage.textContent = stock > 0
+                ? `${stock} available in stock.`
+                : "This product is out of stock.";
+        }
+
+        function openSaleForm() {
+            saleForm.reset();
+            quantityInput.value = "1";
+            populateCustomerOptions();
+            populateProductOptions();
+            updateSaleSummary();
+            saleModal.style.display = "flex";
+            saleModal.setAttribute("aria-hidden", "false");
+
+            if (!customerSelect.disabled) {
+                customerSelect.focus();
+            }
+        }
+
+        function closeSaleForm() {
+            saleForm.reset();
+            saleModal.style.display = "none";
+            saleModal.setAttribute("aria-hidden", "true");
+        }
+
+        function createInvoiceId() {
+            const highestId = sales.reduce((highest, sale) => {
+                const match = /^INV-(\d+)$/.exec(sale.id);
+                return match ? Math.max(highest, Number(match[1])) : highest;
+            }, 0);
+
+            return `INV-${String(highestId + 1).padStart(4, "0")}`;
+        }
+
+        function persistSale(sale, product) {
+            const previousProducts = localStorage.getItem(PRODUCTS_KEY);
+            const previousSales = localStorage.getItem(SALES_KEY);
+            const updatedProducts = products.map((item) => {
+                return item.id === product.id
+                    ? { ...item, stock: Number(item.stock) - sale.quantity }
+                    : item;
+            });
+            const updatedSales = [...sales, sale];
+
+            try {
+                localStorage.setItem(PRODUCTS_KEY, JSON.stringify(updatedProducts));
+                localStorage.setItem(SALES_KEY, JSON.stringify(updatedSales));
+            } catch (error) {
+                if (previousProducts === null) {
+                    localStorage.removeItem(PRODUCTS_KEY);
+                } else {
+                    localStorage.setItem(PRODUCTS_KEY, previousProducts);
+                }
+
+                if (previousSales === null) {
+                    localStorage.removeItem(SALES_KEY);
+                } else {
+                    localStorage.setItem(SALES_KEY, previousSales);
+                }
+
+                throw error;
+            }
+
+            products = updatedProducts;
+            sales = updatedSales;
+        }
+
+        document.getElementById("newSaleButton").addEventListener("click", openSaleForm);
+        document.getElementById("closeSaleModal").addEventListener("click", closeSaleForm);
+        document.getElementById("cancelSaleForm").addEventListener("click", closeSaleForm);
+        productSelect.addEventListener("change", updateSaleSummary);
+        quantityInput.addEventListener("input", updateSaleSummary);
+
+        saleModal.addEventListener("click", (event) => {
+            if (event.target === saleModal) {
+                closeSaleForm();
+            }
+        });
+
+        document.addEventListener("keydown", (event) => {
+            if (event.key === "Escape" && saleModal.style.display === "flex") {
+                closeSaleForm();
+            }
+        });
+
+        saleForm.addEventListener("submit", (event) => {
+            event.preventDefault();
+
+            const customer = customers.find((item) => item.id === customerSelect.value);
+            const product = getSelectedProduct();
+            const quantity = Number(quantityInput.value);
+
+            if (!customer || !product) {
+                alert("Select a customer and a product before completing the sale.");
+                return;
+            }
+
+            if (!Number.isInteger(quantity) || quantity < 1) {
+                alert("Quantity must be a whole number greater than zero.");
+                return;
+            }
+
+            if (quantity > Number(product.stock)) {
+                alert(`Only ${product.stock} unit(s) of ${product.name} are in stock.`);
+                return;
+            }
+
+            const sale = {
+                id: createInvoiceId(),
+                date: new Date().toISOString(),
+                customerId: customer.id,
+                customerName: customer.name,
+                productId: product.id,
+                productName: product.name,
+                quantity,
+                unitPrice: Number(product.price),
+                total: Number(product.price) * quantity
+            };
+
+            persistSale(sale, product);
+            renderSales(searchSaleInput.value);
+            closeSaleForm();
+        });
+
+        document.getElementById("searchSaleButton").addEventListener("click", () => {
+            renderSales(searchSaleInput.value);
+        });
+
+        searchSaleInput.addEventListener("input", () => {
+            renderSales(searchSaleInput.value);
+        });
+
+        renderSales();
+    </script>
+
+</body>
+
+</html>

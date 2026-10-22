@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Products - PAWPATROL Management System</title>
+
+    <link rel="stylesheet" href="style.css">
+    <script defer src="local-auth.js"></script>
+</head>
+
+<body data-requires-login style="visibility: hidden;">
+
+    <header>
+
+        <div class="logo">
+            <div class="logo-circle">🐶</div>
+            <div class="logo-text">
+                <h1>PAWPATROL</h1>
+                <span>MANAGEMENT SYSTEM</span>
+            </div>
+        </div>
+
+        <div class="admin">
+            <strong id="currentUserEmail">Employee</strong>
+            <small>Signed in</small>
+        </div>
+
+    </header>
+
+    <div class="layout">
+
+        <aside>
+            <a href="index.html">🏠 Dashboard</a>
+            <a href="pets.html">🐾 Pets</a>
+            <a href="products.html" class="active">📦 Products</a>
+            <a href="customers.html">👥 Customers</a>
+            <a href="sales.html">💰 Sales</a>
+            <a href="inventory.html">📊 Inventory</a>
+            <a href="employees.html">👨‍💼 Employees</a>
+            <a href="reports.html">📈 Reports</a>
+            <a href="settings.html">⚙️ Settings</a>
+            <button id="logoutButton" class="logout-button logout" type="button">↪ Sign out</button>
+        </aside>
+
+        <main>
+
+            <div class="page-header">
+                <div>
+                    <h2>PRODUCTS MANAGEMENT</h2>
+                    <p>Manage your pet shop products and stock.</p>
+                </div>
+
+                <button class="add-button" id="addProductButton" type="button">
+                    + Add Product
+                </button>
+            </div>
+
+            <div class="search-box">
+                <input
+                    id="searchProductInput"
+                    type="search"
+                    placeholder="Search products..."
+                    aria-label="Search products"
+                >
+                <button id="searchProductButton" type="button">Search</button>
+            </div>
+
+            <section class="management-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Product Name</th>
+                            <th>Category</th>
+                            <th>Price</th>
+                            <th>Stock</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="productTableBody"></tbody>
+                </table>
+            </section>
+
+        </main>
+
+    </div>
+
+    <div id="productModal" class="modal" aria-hidden="true">
+        <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+            <div class="modal-header">
+                <h2 id="modalTitle">Add New Product</h2>
+                <button class="close-button" id="closeProductModal" type="button" aria-label="Close">
+                    ×
+                </button>
+            </div>
+
+            <form id="productForm">
+                <input type="hidden" id="productId">
+
+                <label for="productName">Product Name</label>
+                <input
+                    type="text"
+                    id="productName"
+                    placeholder="Enter product name"
+                    maxlength="80"
+                    required
+                >
+
+                <label for="productCategory">Category</label>
+                <select id="productCategory" required>
+                    <option value="">Select category</option>
+                    <option value="Food">Food</option>
+                    <option value="Treats">Treats</option>
+                    <option value="Toys">Toys</option>
+                    <option value="Accessories">Accessories</option>
+                    <option value="Grooming">Grooming</option>
+                    <option value="Health">Health</option>
+                    <option value="Other">Other</option>
+                </select>
+
+                <label for="productPrice">Price (₱)</label>
+                <input
+                    type="number"
+                    id="productPrice"
+                    placeholder="Enter price"
+                    min="0"
+                    step="0.01"
+                    required
+                >
+
+                <label for="productStock">Stock Quantity</label>
+                <input
+                    type="number"
+                    id="productStock"
+                    placeholder="Enter stock quantity"
+                    min="0"
+                    step="1"
+                    required
+                >
+
+                <div class="form-buttons">
+                    <button class="cancel-button" id="cancelProductForm" type="button">
+                        Cancel
+                    </button>
+                    <button class="save-button" id="submitProductButton" type="submit">
+                        Add Product
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const STORAGE_KEY = "petShopProducts";
+        const LOW_STOCK_THRESHOLD = 5;
+
+        const defaultProducts = [
+            { id: "PROD-001", name: "Royal Canin Kitten", category: "Food", price: 850, stock: 3 },
+            { id: "PROD-002", name: "Dog Chew Bones", category: "Treats", price: 150, stock: 2 },
+            { id: "PROD-003", name: "Whiskas Tuna 400g", category: "Food", price: 120, stock: 4 },
+            { id: "PROD-004", name: "Cat Litter 5kg", category: "Grooming", price: 320, stock: 5 },
+            { id: "PROD-005", name: "Pedigree Adult 1kg", category: "Food", price: 280, stock: 6 }
+        ];
+
+        const storedProducts = localStorage.getItem(STORAGE_KEY);
+        let products = storedProducts === null
+            ? defaultProducts
+            : JSON.parse(storedProducts);
+
+        if (!Array.isArray(products)) {
+            throw new Error(`The saved product data in "${STORAGE_KEY}" is not a valid list.`);
+        }
+
+        const productTableBody = document.getElementById("productTableBody");
+        const productForm = document.getElementById("productForm");
+        const productModal = document.getElementById("productModal");
+        const searchProductInput = document.getElementById("searchProductInput");
+
+        function saveProducts() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(products));
+        }
+
+        function getProductStatus(stock) {
+            if (stock === 0) {
+                return { label: "Out of Stock", className: "sold" };
+            }
+
+            if (stock <= LOW_STOCK_THRESHOLD) {
+                return { label: "Low Stock", className: "low-stock" };
+            }
+
+            return { label: "In Stock", className: "available" };
+        }
+
+        function appendCell(row, text) {
+            const cell = document.createElement("td");
+            cell.textContent = text;
+            row.appendChild(cell);
+            return cell;
+        }
+
+        function renderProducts(searchText = "") {
+            const keyword = searchText.trim().toLowerCase();
+            const filteredProducts = products.filter((product) => {
+                return [
+                    product.id,
+                    product.name,
+                    product.category,
+                    String(product.price),
+                    String(product.stock)
+                ].some((value) => String(value).toLowerCase().includes(keyword));
+            });
+
+            productTableBody.replaceChildren();
+
+            if (filteredProducts.length === 0) {
+                const row = document.createElement("tr");
+                const cell = appendCell(row, "No products found.");
+                cell.colSpan = 7;
+                cell.style.textAlign = "center";
+                cell.style.padding = "20px";
+                cell.style.color = "#777";
+                productTableBody.appendChild(row);
+                return;
+            }
+
+            filteredProducts.forEach((product) => {
+                const row = document.createElement("tr");
+                row.dataset.productId = product.id;
+
+                appendCell(row, product.id);
+                appendCell(row, product.name);
+                appendCell(row, product.category);
+                appendCell(row, `₱${Number(product.price).toFixed(2)}`);
+                appendCell(row, String(product.stock));
+
+                const status = getProductStatus(Number(product.stock));
+                const statusCell = document.createElement("td");
+                const statusBadge = document.createElement("span");
+                statusBadge.className = `status ${status.className}`;
+                statusBadge.textContent = status.label;
+                statusCell.appendChild(statusBadge);
+                row.appendChild(statusCell);
+
+                const actionsCell = document.createElement("td");
+                const editButton = document.createElement("button");
+                editButton.type = "button";
+                editButton.className = "edit-button";
+                editButton.textContent = "Edit";
+
+                const deleteButton = document.createElement("button");
+                deleteButton.type = "button";
+                deleteButton.className = "delete-button";
+                deleteButton.textContent = "Delete";
+
+                actionsCell.append(editButton, deleteButton);
+                row.appendChild(actionsCell);
+                productTableBody.appendChild(row);
+            });
+        }
+
+        function openProductForm(product = null) {
+            productForm.reset();
+            document.getElementById("productId").value = product ? product.id : "";
+            document.getElementById("modalTitle").textContent = product
+                ? "Edit Product"
+                : "Add New Product";
+            document.getElementById("submitProductButton").textContent = product
+                ? "Update Product"
+                : "Add Product";
+
+            if (product) {
+                document.getElementById("productName").value = product.name;
+                document.getElementById("productCategory").value = product.category;
+                document.getElementById("productPrice").value = product.price;
+                document.getElementById("productStock").value = product.stock;
+            }
+
+            productModal.style.display = "flex";
+            productModal.setAttribute("aria-hidden", "false");
+            document.getElementById("productName").focus();
+        }
+
+        function closeProductForm() {
+            productForm.reset();
+            document.getElementById("productId").value = "";
+            productModal.style.display = "none";
+            productModal.setAttribute("aria-hidden", "true");
+        }
+
+        function createProductId() {
+            const highestId = products.reduce((highest, product) => {
+                const match = /^PROD-(\d+)$/.exec(product.id);
+                return match ? Math.max(highest, Number(match[1])) : highest;
+            }, 0);
+
+            return `PROD-${String(highestId + 1).padStart(3, "0")}`;
+        }
+
+        document.getElementById("addProductButton").addEventListener("click", () => {
+            openProductForm();
+        });
+
+        document.getElementById("closeProductModal").addEventListener("click", closeProductForm);
+        document.getElementById("cancelProductForm").addEventListener("click", closeProductForm);
+
+        productModal.addEventListener("click", (event) => {
+            if (event.target === productModal) {
+                closeProductForm();
+            }
+        });
+
+        document.addEventListener("keydown", (event) => {
+            if (event.key === "Escape" && productModal.style.display === "flex") {
+                closeProductForm();
+            }
+        });
+
+        productForm.addEventListener("submit", (event) => {
+            event.preventDefault();
+
+            const productId = document.getElementById("productId").value;
+            const price = Number(document.getElementById("productPrice").value);
+            const stock = Number(document.getElementById("productStock").value);
+            const productData = {
+                id: productId || createProductId(),
+                name: document.getElementById("productName").value.trim(),
+                category: document.getElementById("productCategory").value,
+                price,
+                stock
+            };
+
+            if (
+                !productData.name ||
+                !productData.category ||
+                !Number.isFinite(price) ||
+                price < 0 ||
+                !Number.isInteger(stock) ||
+                stock < 0
+            ) {
+                alert("Enter a product name, category, valid price, and whole-number stock quantity.");
+                return;
+            }
+
+            if (productId) {
+                const productIndex = products.findIndex((product) => product.id === productId);
+                if (productIndex === -1) {
+                    alert("This product could not be found. Please refresh the page and try again.");
+                    return;
+                }
+                products[productIndex] = productData;
+            } else {
+                products.push(productData);
+            }
+
+            saveProducts();
+            renderProducts(searchProductInput.value);
+            closeProductForm();
+        });
+
+        productTableBody.addEventListener("click", (event) => {
+            const button = event.target.closest("button");
+            const row = button && button.closest("tr");
+
+            if (!button || !row || !row.dataset.productId) {
+                return;
+            }
+
+            const product = products.find((item) => item.id === row.dataset.productId);
+            if (!product) {
+                return;
+            }
+
+            if (button.classList.contains("edit-button")) {
+                openProductForm(product);
+                return;
+            }
+
+            if (button.classList.contains("delete-button") && confirm(`Delete ${product.name}?`)) {
+                products = products.filter((item) => item.id !== product.id);
+                saveProducts();
+                renderProducts(searchProductInput.value);
+            }
+        });
+
+        document.getElementById("searchProductButton").addEventListener("click", () => {
+            renderProducts(searchProductInput.value);
+        });
+
+        searchProductInput.addEventListener("input", () => {
+            renderProducts(searchProductInput.value);
+        });
+
+        renderProducts();
+    </script>
+
+</body>
+
+</html>

@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Customers - PAWPATROL Management System</title>
+
+    <link rel="stylesheet" href="style.css">
+    <style>
+        button,
+        a,
+        input,
+        select,
+        textarea {
+            transition: transform 160ms ease, box-shadow 160ms ease;
+        }
+
+        .click-feedback {
+            animation: customer-click-feedback 280ms ease-out;
+        }
+
+        @keyframes customer-click-feedback {
+            35% {
+                transform: scale(0.96);
+                box-shadow: 0 0 0 4px rgba(223, 82, 118, 0.18);
+            }
+
+            100% {
+                transform: scale(1);
+                box-shadow: 0 0 0 0 rgba(223, 82, 118, 0);
+            }
+        }
+
+        #customerModal[aria-hidden="false"] {
+            animation: customer-modal-fade-in 180ms ease-out;
+        }
+
+        #customerModal[aria-hidden="false"] .modal-content {
+            animation: customer-modal-enter 220ms ease-out;
+        }
+
+        @keyframes customer-modal-fade-in {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        @keyframes customer-modal-enter {
+            from {
+                opacity: 0;
+                transform: translateY(12px) scale(0.98);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            button,
+            a,
+            input,
+            select,
+            textarea,
+            .click-feedback,
+            #customerModal[aria-hidden="false"],
+            #customerModal[aria-hidden="false"] .modal-content {
+                animation-duration: 0.01ms !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
+    </style>
+    <script defer src="local-auth.js"></script>
+</head>
+
+<body data-requires-login style="visibility: hidden;">
+
+    <header>
+
+        <div class="logo">
+            <div class="logo-circle">🐶</div>
+            <div class="logo-text">
+                <h1>PAWPATROL</h1>
+                <span>MANAGEMENT SYSTEM</span>
+            </div>
+        </div>
+
+        <div class="admin">
+            <strong id="currentUserEmail">Employee</strong>
+            <small>Signed in</small>
+        </div>
+
+    </header>
+
+    <div class="layout">
+
+        <aside>
+            <a href="index.html">🏠 Dashboard</a>
+            <a href="pets.html">🐾 Pets</a>
+            <a href="products.html">📦 Products</a>
+            <a href="customers.html" class="active">👥 Customers</a>
+            <a href="sales.html">💰 Sales</a>
+            <a href="inventory.html">📊 Inventory</a>
+            <a href="employees.html">👨‍💼 Employees</a>
+            <a href="reports.html">📈 Reports</a>
+            <a href="settings.html">⚙️ Settings</a>
+            <button id="logoutButton" class="logout-button logout" type="button">↪ Sign out</button>
+        </aside>
+
+        <main>
+
+            <div class="page-header">
+                <div>
+                    <h2>CUSTOMER MANAGEMENT</h2>
+                    <p>Manage your pet shop customer contact information.</p>
+                </div>
+
+                <button class="add-button" id="addCustomerButton" type="button">
+                    + Add Customer
+                </button>
+            </div>
+
+            <div class="search-box">
+                <input
+                    id="searchCustomerInput"
+                    type="search"
+                    placeholder="Search customers..."
+                    aria-label="Search customers"
+                >
+                <button id="searchCustomerButton" type="button">Search</button>
+            </div>
+
+            <section class="management-table">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Customer Name</th>
+                            <th>Phone</th>
+                            <th>Email</th>
+                            <th>Address</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="customerTableBody"></tbody>
+                </table>
+            </section>
+
+        </main>
+
+    </div>
+
+    <div id="customerModal" class="modal" aria-hidden="true">
+        <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+            <div class="modal-header">
+                <h2 id="modalTitle">Add New Customer</h2>
+                <button class="close-button" id="closeCustomerModal" type="button" aria-label="Close">
+                    ×
+                </button>
+            </div>
+
+            <form id="customerForm">
+                <input type="hidden" id="customerId">
+
+                <label for="customerName">Customer Name</label>
+                <input
+                    type="text"
+                    id="customerName"
+                    placeholder="Enter customer name"
+                    maxlength="80"
+                    autocomplete="name"
+                    required
+                >
+
+                <label for="customerPhone">Phone</label>
+                <input
+                    type="tel"
+                    id="customerPhone"
+                    placeholder="Enter phone number"
+                    maxlength="30"
+                    autocomplete="tel"
+                    required
+                >
+
+                <label for="customerEmail">Email</label>
+                <input
+                    type="email"
+                    id="customerEmail"
+                    placeholder="Enter email address"
+                    maxlength="120"
+                    autocomplete="email"
+                    required
+                >
+
+                <label for="customerAddress">Address</label>
+                <input
+                    type="text"
+                    id="customerAddress"
+                    placeholder="Enter customer address"
+                    maxlength="160"
+                    autocomplete="street-address"
+                    required
+                >
+
+                <div class="form-buttons">
+                    <button class="cancel-button" id="cancelCustomerForm" type="button">
+                        Cancel
+                    </button>
+                    <button class="save-button" id="submitCustomerButton" type="submit">
+                        Add Customer
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        const STORAGE_KEY = "petShopCustomers";
+
+        const defaultCustomers = [
+            {
+                id: "CUST-001",
+                name: "Juan Dela Cruz",
+                phone: "0912-345-6789",
+                email: "juan@example.com",
+                address: "123 Main Street"
+            },
+            {
+                id: "CUST-002",
+                name: "Maria Santos",
+                phone: "0917-234-5678",
+                email: "maria@example.com",
+                address: "45 Mabini Avenue"
+            },
+            {
+                id: "CUST-003",
+                name: "Pedro Reyes",
+                phone: "0920-456-7890",
+                email: "pedro@example.com",
+                address: "8 Rizal Street"
+            }
+        ];
+
+        const storedCustomers = localStorage.getItem(STORAGE_KEY);
+        let customers = storedCustomers === null
+            ? defaultCustomers
+            : JSON.parse(storedCustomers);
+
+        if (!Array.isArray(customers)) {
+            throw new Error(`The saved customer data in "${STORAGE_KEY}" is not a valid list.`);
+        }
+
+        const customerTableBody = document.getElementById("customerTableBody");
+        const customerForm = document.getElementById("customerForm");
+        const customerModal = document.getElementById("customerModal");
+        const searchCustomerInput = document.getElementById("searchCustomerInput");
+
+        document.addEventListener("click", (event) => {
+            if (!(event.target instanceof Element)) {
+                return;
+            }
+
+            const control = event.target.closest("button, a, input, select, textarea, [role='button']");
+            if (!control || control.matches(":disabled")) {
+                return;
+            }
+
+            control.classList.remove("click-feedback");
+            void control.offsetWidth;
+            control.classList.add("click-feedback");
+        });
+
+        document.addEventListener("animationend", (event) => {
+            if (
+                event.animationName === "customer-click-feedback" &&
+                event.target instanceof Element
+            ) {
+                event.target.classList.remove("click-feedback");
+            }
+        });
+
+        function saveCustomers() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(customers));
+        }
+
+        function appendCell(row, text) {
+            const cell = document.createElement("td");
+            cell.textContent = text;
+            row.appendChild(cell);
+            return cell;
+        }
+
+        function renderCustomers(searchText = "") {
+            const keyword = searchText.trim().toLowerCase();
+            const filteredCustomers = customers.filter((customer) => {
+                return [
+                    customer.id,
+                    customer.name,
+                    customer.phone,
+                    customer.email,
+                    customer.address
+                ].some((value) => String(value).toLowerCase().includes(keyword));
+            });
+
+            customerTableBody.replaceChildren();
+
+            if (filteredCustomers.length === 0) {
+                const row = document.createElement("tr");
+                const cell = appendCell(row, "No customers found.");
+                cell.colSpan = 6;
+                cell.style.textAlign = "center";
+                cell.style.padding = "20px";
+                cell.style.color = "#777";
+                customerTableBody.appendChild(row);
+                return;
+            }
+
+            filteredCustomers.forEach((customer) => {
+                const row = document.createElement("tr");
+                row.dataset.customerId = customer.id;
+
+                appendCell(row, customer.id);
+                appendCell(row, customer.name);
+                appendCell(row, customer.phone);
+                appendCell(row, customer.email);
+                appendCell(row, customer.address);
+
+                const actionsCell = document.createElement("td");
+                const editButton = document.createElement("button");
+                editButton.type = "button";
+                editButton.className = "edit-button";
+                editButton.textContent = "Edit";
+
+                const deleteButton = document.createElement("button");
+                deleteButton.type = "button";
+                deleteButton.className = "delete-button";
+                deleteButton.textContent = "Delete";
+
+                actionsCell.append(editButton, deleteButton);
+                row.appendChild(actionsCell);
+                customerTableBody.appendChild(row);
+            });
+        }
+
+        function openCustomerForm(customer = null) {
+            customerForm.reset();
+            document.getElementById("customerId").value = customer ? customer.id : "";
+            document.getElementById("modalTitle").textContent = customer
+                ? "Edit Customer"
+                : "Add New Customer";
+            document.getElementById("submitCustomerButton").textContent = customer
+                ? "Update Customer"
+                : "Add Customer";
+
+            if (customer) {
+                document.getElementById("customerName").value = customer.name;
+                document.getElementById("customerPhone").value = customer.phone;
+                document.getElementById("customerEmail").value = customer.email;
+                document.getElementById("customerAddress").value = customer.address;
+            }
+
+            customerModal.style.display = "flex";
+            customerModal.setAttribute("aria-hidden", "false");
+            document.getElementById("customerName").focus();
+        }
+
+        function closeCustomerForm() {
+            customerForm.reset();
+            document.getElementById("customerId").value = "";
+            customerModal.style.display = "none";
+            customerModal.setAttribute("aria-hidden", "true");
+        }
+
+        function createCustomerId() {
+            const highestId = customers.reduce((highest, customer) => {
+                const match = /^CUST-(\d+)$/.exec(customer.id);
+                return match ? Math.max(highest, Number(match[1])) : highest;
+            }, 0);
+
+            return `CUST-${String(highestId + 1).padStart(3, "0")}`;
+        }
+
+        document.getElementById("addCustomerButton").addEventListener("click", () => {
+            openCustomerForm();
+        });
+
+        document.getElementById("closeCustomerModal").addEventListener("click", closeCustomerForm);
+        document.getElementById("cancelCustomerForm").addEventListener("click", closeCustomerForm);
+
+        customerModal.addEventListener("click", (event) => {
+            if (event.target === customerModal) {
+                closeCustomerForm();
+            }
+        });
+
+        document.addEventListener("keydown", (event) => {
+            if (event.key === "Escape" && customerModal.style.display === "flex") {
+                closeCustomerForm();
+            }
+        });
+
+        customerForm.addEventListener("submit", (event) => {
+            event.preventDefault();
+
+            const customerId = document.getElementById("customerId").value;
+            const customerData = {
+                id: customerId || createCustomerId(),
+                name: document.getElementById("customerName").value.trim(),
+                phone: document.getElementById("customerPhone").value.trim(),
+                email: document.getElementById("customerEmail").value.trim(),
+                address: document.getElementById("customerAddress").value.trim()
+            };
+
+            if (
+                !customerData.name ||
+                !customerData.phone ||
+                !customerData.email ||
+                !customerData.address
+            ) {
+                alert("Please complete all customer fields.");
+                return;
+            }
+
+            if (customerId) {
+                const customerIndex = customers.findIndex((customer) => customer.id === customerId);
+                if (customerIndex === -1) {
+                    alert("This customer could not be found. Please refresh the page and try again.");
+                    return;
+                }
+                customers[customerIndex] = customerData;
+            } else {
+                customers.push(customerData);
+            }
+
+            saveCustomers();
+            renderCustomers(searchCustomerInput.value);
+            closeCustomerForm();
+        });
+
+        customerTableBody.addEventListener("click", (event) => {
+            const button = event.target.closest("button");
+            const row = button && button.closest("tr");
+
+            if (!button || !row || !row.dataset.customerId) {
+                return;
+            }
+
+            const customer = customers.find((item) => item.id === row.dataset.customerId);
+            if (!customer) {
+                return;
+            }
+
+            if (button.classList.contains("edit-button")) {
+                openCustomerForm(customer);
+                return;
+            }
+
+            if (button.classList.contains("delete-button") && confirm(`Delete ${customer.name}?`)) {
+                customers = customers.filter((item) => item.id !== customer.id);
+                saveCustomers();
+                renderCustomers(searchCustomerInput.value);
+            }
+        });
+
+        document.getElementById("searchCustomerButton").addEventListener("click", () => {
+            renderCustomers(searchCustomerInput.value);
+        });
+
+        searchCustomerInput.addEventListener("input", () => {
+            renderCustomers(searchCustomerInput.value);
+        });
+
+        renderCustomers();
+    </script>
+
+</body>
+
+</html>
